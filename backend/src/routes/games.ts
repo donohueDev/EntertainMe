@@ -44,29 +44,22 @@ const processGameData = async (game: Game): Promise<void> => {
     });
 
     // Check if the game already exists in the database
-    const existingGame = await new Promise<{ id: number } | undefined>((resolve, reject) => {
-      pool.query('SELECT id FROM games WHERE id = $1', [game.id], (err: Error | null, row: { id: number } | undefined) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-
+    const existingGameResult = await pool.query('SELECT id FROM games WHERE id = $1', [game.id]);
+    
     // If the game already exists, skip the insertion
-    if (existingGame) {
+    if (existingGameResult.rows.length > 0) {
       console.log(`Game with ID ${game.id} already exists in the database.`);
       return;
     }
 
     // Insert the game data
-    const stmt = pool.query(`
+    await pool.query(`
       INSERT INTO games (
         id, slug, name, released, tba, background_image, rating, rating_top, ratings_count,
         reviews_text_count, added, metacritic, playtime, suggestions_count,
         updated, user_game, reviews_count, saturated_color, dominant_color, esrb_rating, description_raw
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
-    `);
-
-    stmt.run(
+    `, [
       detailedGame.id,
       detailedGame.slug,
       detailedGame.name,
@@ -88,7 +81,7 @@ const processGameData = async (game: Game): Promise<void> => {
       detailedGame.dominant_color,
       detailedGame.esrb_rating ? detailedGame.esrb_rating.name : null,
       detailedGame.description_raw || detailedGame.description
-    );
+    ]);
 
     console.log(`Successfully inserted game ${detailedGame.name}`);
   } catch (error) {
@@ -113,18 +106,18 @@ router.post('/rawg-games', async (_req: Request, res: Response) => {
       const games = data.results;
       if (!games.length) break;
 
-      await Promise.all(
-        games.map(async (game) => {
-          try {
-            await processGameData(game);
-            totalGamesInserted++;
-          } catch (err) {
-            console.error(`Failed to insert game ${game.id}:`, err instanceof Error ? err.message : 'Unknown error');
-          }
-        })
-      );
-
-      console.log(`Inserted ${totalGamesInserted} games so far.`);
+      // Process games sequentially instead of concurrently
+      for (const game of games) {
+        if (totalGamesInserted >= targetGames) break;
+        
+        try {
+          await processGameData(game);
+          totalGamesInserted++;
+          console.log(`Inserted ${totalGamesInserted} games so far.`);
+        } catch (err) {
+          console.error(`Failed to insert game ${game.id}:`, err instanceof Error ? err.message : 'Unknown error');
+        }
+      }
 
       if (totalGamesInserted >= targetGames) {
         break;
@@ -145,14 +138,14 @@ router.get('/', async (_req: Request, res: Response) => {
   try {
     const sql = 'SELECT * FROM games ORDER BY rating DESC;';
     
-    pool.query(sql, [], (err: Error | null, rows: Game[]) => {
+    pool.query(sql, [], (err: Error | null, result) => {
       if (err) {
         console.error('Error fetching games:', err);
         res.status(500).json({ error: 'Database error' });
         return;
       }
-      console.log('Found games:', rows.length);
-      res.json(rows);
+      console.log('Found games:', result.rows.length);
+      res.json(result.rows);
     });
   } catch (error) {
     console.error('Error handling request:', error);
@@ -163,13 +156,13 @@ router.get('/', async (_req: Request, res: Response) => {
 // Test route to check database connection
 router.get('/test', (_req: Request, res: Response) => {
   try {
-    pool.query('SELECT COUNT(*) as count FROM games', [], (err: Error | null, row: { count: number }) => {
+    pool.query('SELECT COUNT(*) as count FROM games', [], (err: Error | null, result) => {
       if (err) {
         console.error('Error checking games count:', err);
         res.status(500).json({ error: 'Database error' });
         return;
       }
-      res.json({ message: 'Database is working', gamesCount: row.count });
+      res.json({ message: 'Database is working', gamesCount: result.rowCount });
     });
   } catch (error) {
     console.error('Error in test route:', error);

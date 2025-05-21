@@ -1,8 +1,8 @@
 import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 
-dotenv.config();
-
+dotenv.config({ path: '/Users/donohue/tempProject/.env' });
+console.log('DB_USER:', process.env.DB_USER);
 const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
   host: process.env.DB_HOST || 'localhost',

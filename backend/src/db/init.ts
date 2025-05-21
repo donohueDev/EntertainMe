@@ -69,9 +69,6 @@ async function initializeDatabase() {
   } catch (error) {
     console.error('Error initializing database:', error);
     throw error;
-  } finally {
-    // Close the pool
-    await pool.end();
   }
 }
 

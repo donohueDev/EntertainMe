@@ -9,7 +9,20 @@ interface SearchQuery {
 interface Game {
   id: number;
   name: string;
-  // Add other game properties as needed
+  slug: string;
+  released: string;
+  tba: number;
+  background_image: string;
+  rating: number;
+  rating_top: number;
+  ratings_count: number;
+  reviews_text_count: number;
+  added: number;
+  metacritic: number;
+  playtime: number;
+  suggestions_count: number;
+  updated: string;
+  
 }
 
 interface DatabaseError extends Error {
@@ -17,22 +30,9 @@ interface DatabaseError extends Error {
 }
 
 const router = express.Router();
-let db: Database;
-
-// Initialize database connection
-initDatabase().then((database: Database) => {
-  db = database;
-}).catch((error: DatabaseError) => {
-  console.error('Failed to initialize database:', error);
-});
 
 router.get('/game', async (req: Request<{}, {}, {}, SearchQuery>, res: Response) => {
   const { query } = req.query;
-
-  if (!db) {
-    res.status(500).json({ error: 'Database not initialized' });
-    return;
-  }
 
   try {
     const result = await pool.query(
