@@ -51,8 +51,8 @@ const LoginPage = () => {
         setUsername('');
         setPassword('');
 
-        // Navigate to the Account page
-        navigate('/account');
+        // Navigate to the Account Dashboard
+        navigate('/account/dashboard');
       } else {
         setErrorMessage('Login failed. Please check your credentials.');
       }

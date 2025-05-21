@@ -32,27 +32,56 @@ const GameDetailPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [userGameData, setUserGameData] = useState(null);
   const navigate = useNavigate();
   const { user } = useUser();
 
+  // Check if user is properly authenticated
+  const isAuthenticated = user?.isLoggedIn === 'true' && 
+                         localStorage.getItem('loggedIn') === 'true' && 
+                         localStorage.getItem('userId') && 
+                         localStorage.getItem('username');
+
+  // Function to get English description
+  const getEnglishDescription = (description) => {
+    if (!description) return 'No description available.';
+    const spanishIndex = description.indexOf('Español');
+    return spanishIndex !== -1 ? description.substring(0, spanishIndex).trim() : description;
+  };
+
+  // Scroll to top when component mounts
   useEffect(() => {
-    console.log('User context updated:', user);
-  }, [user]);
+    window.scrollTo(0, 0);
+  }, []);
+
+  // Fetch user's current game data when component mounts or when user/game changes
+  useEffect(() => {
+    const fetchUserGameData = async () => {
+      if (isAuthenticated && game?.id) {
+        try {
+          const response = await axios.get(`http://localhost:3001/api/userGames/${user.userId}/games/${game.id}`);
+          if (response.data) {
+            setUserGameData(response.data);
+            setRating(response.data.user_rating || 0);
+            setStatus(response.data.user_status || 'not played');
+          }
+        } catch (error) {
+          console.error('Error fetching user game data:', error);
+        }
+      }
+    };
+
+    fetchUserGameData();
+  }, [user, game, isAuthenticated]);
 
   const handleRating = async () => {
-    console.log('Rating:', rating, 'Status:', status);
-
-    if (status === 'not played' || status === 'planned') {
-      setError('Status must be set to played or playing before submitting your rating.');
+    if (!isAuthenticated) {
+      navigate('/account');
       return;
     }
 
-    if (user?.isLoggedIn === 'false') {
-      if (window.confirm('You need to log in before submitting a rating. Would you like to log in now?')) {
-        navigate('/account');
-      } else {
-        navigate(-1);
-      }
+    if (status === 'not played' || status === 'planned') {
+      setError('Status must be set to completed or playing before submitting your rating.');
       return;
     }
 
@@ -65,8 +94,13 @@ const GameDetailPage = () => {
         status,
       });
 
+      setUserGameData({
+        ...userGameData,
+        user_rating: Math.round(rating),
+        user_status: status
+      });
+
       setSuccess(true);
-      console.log('Rating submitted successfully:', response.data);
     } catch (error) {
       console.error('Error submitting rating:', error);
       setError(error.response?.data?.message || 'Failed to submit rating. Please try again.');
@@ -98,50 +132,156 @@ const GameDetailPage = () => {
             {game.name}
           </Typography>
 
-          <Box sx={{ my: 4 }}>
+          {/* Game Details Section */}
+          <Box sx={{ mb: 4 }}>
             <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
-              Set your game status:
+              Game Information
             </Typography>
-            <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel id="game-status-label">Game Status</InputLabel>
-              <Select
-                labelId="game-status-label"
-                value={status}
-                label="Game Status"
-                onChange={(e) => setStatus(e.target.value)}
-              >
-                <MenuItem value="playing">Playing</MenuItem>
-                <MenuItem value="planned">Planned</MenuItem>
-                <MenuItem value="played">Played</MenuItem>
-                <MenuItem value="not played">Not Played</MenuItem>
-              </Select>
-            </FormControl>
+            <Grid container spacing={2}>
+              {game && (
+                <>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body1" sx={{ color: 'white' }}>
+                      <strong>Release Date:</strong> {game.released || 'N/A'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body1" sx={{ color: 'white' }}>
+                      <strong>ESRB Rating:</strong> {game.esrb_rating || 'N/A'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body1" sx={{ color: 'white' }}>
+                      <strong>Metacritic Score:</strong> {game.metacritic ? `${game.metacritic}/100` : 'N/A'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body1" sx={{ color: 'white' }}>
+                      <strong>Average Rating:</strong> {game.rating ? `${game.rating}/5` : 'N/A'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body1" sx={{ color: 'white' }}>
+                      <strong>Reviews Count:</strong> {game.reviews_count?.toLocaleString() || 'N/A'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body1" sx={{ color: 'white' }}>
+                      <strong>Average Playtime:</strong> {game.playtime ? `${game.playtime} hours` : 'N/A'}
+                    </Typography>
+                  </Grid>
+                </>
+              )}
+            </Grid>
+          </Box>
 
+          {/* User Rating Section - Only shown for logged-in users */}
+          {isAuthenticated ? (
+            <>
+              {userGameData && (
+                <Box sx={{ mb: 4, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                  <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
+                    Your Current Status:
+                  </Typography>
+                  <Typography variant="body1" sx={{ color: 'white', mb: 1 }}>
+                    Status: {userGameData.user_status || 'Not set'}
+                  </Typography>
+                  <Typography variant="body1" sx={{ color: 'white' }}>
+                    Rating: {userGameData.user_rating ? `${userGameData.user_rating}/5` : 'Not rated'}
+                  </Typography>
+                </Box>
+              )}
+
+              <Box sx={{ my: 4 }}>
+                <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
+                  Update your game status:
+                </Typography>
+                <FormControl fullWidth sx={{ mb: 3 }}>
+                  <InputLabel id="game-status-label">Game Status</InputLabel>
+                  <Select
+                    labelId="game-status-label"
+                    value={status}
+                    label="Game Status"
+                    onChange={(e) => setStatus(e.target.value)}
+                  >
+                    <MenuItem value="playing">Playing</MenuItem>
+                    <MenuItem value="planned">Planned</MenuItem>
+                    <MenuItem value="completed">Completed</MenuItem>
+                    <MenuItem value="dropped">Dropped</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
+                  Rate this game:
+                </Typography>
+                <Rating
+                  value={rating}
+                  onChange={(event, newValue) => setRating(newValue)}
+                  precision={0.5}
+                  size="large"
+                  sx={{ mb: 3 }}
+                />
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  onClick={handleRating}
+                  disabled={loading}
+                  fullWidth
+                  sx={{ mb: 3 }}
+                >
+                  {loading ? <CircularProgress size={24} /> : 'Update Rating'}
+                </Button>
+              </Box>
+            </>
+          ) : (
+            <Box sx={{ my: 4, p: 3, bgcolor: 'background.default', borderRadius: 1 }}>
+              <Typography variant="h6" gutterBottom sx={{ color: 'white', textAlign: 'center' }}>
+                Want to track this game?
+              </Typography>
+              <Typography variant="body1" sx={{ color: 'white', textAlign: 'center', mb: 1 }}>
+                Log in or create an account to:
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" sx={{ color: 'white', textAlign: 'center' }}>
+                  • Rate your games
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'white', textAlign: 'center' }}>
+                  • Track your game status
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'white', textAlign: 'center' }}>
+                  • Build your game collection
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => navigate('/account')}
+                  sx={{ flex: 1 }}
+                >
+                  Log In
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={() => navigate('/register')}
+                  sx={{ flex: 1 }}
+                >
+                  Create Account
+                </Button>
+              </Box>
+            </Box>
+          )}
+
+          {/* Game Description */}
+          <Box sx={{ mt: 4 }}>
             <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
-              Rate this game:
+              Description
             </Typography>
-            <Rating
-              value={rating}
-              onChange={(event, newValue) => setRating(newValue)}
-              precision={0.5}
-              size="large"
-              sx={{ mb: 3 }}
-            />
-
-            <Button
-              variant="contained"
-              color="primary"
-              size="large"
-              onClick={handleRating}
-              disabled={loading}
-              fullWidth
-              sx={{ mb: 3 }}
-            >
-              {loading ? <CircularProgress size={24} /> : 'Submit Rating'}
-            </Button>
-
             <Typography variant="body1" sx={{ color: 'white', whiteSpace: 'pre-wrap' }}>
-              {game.description}
+              {getEnglishDescription(game.description_raw || game.description)}
             </Typography>
           </Box>
         </CardContent>
@@ -163,7 +303,7 @@ const GameDetailPage = () => {
         onClose={() => setSuccess(false)}
       >
         <Alert severity="success" onClose={() => setSuccess(false)}>
-          Rating submitted successfully!
+          Rating updated successfully!
         </Alert>
       </Snackbar>
     </Container>

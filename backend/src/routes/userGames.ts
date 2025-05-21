@@ -118,4 +118,28 @@ router.post('/ratings', async (req: Request<{}, {}, RatingRequest>, res: Respons
   }
 });
 
+// Get a specific game's data for a user
+router.get('/:userId/games/:gameId', async (req: Request, res: Response) => {
+  const { userId, gameId } = req.params;
+  console.log("Request to /api/userGames/:userId/games/:gameId");
+  console.log("User ID:", userId, "Game ID:", gameId);
+
+  try {
+    // Get user's game data
+    const result = await pool.query(
+      'SELECT rating AS user_rating, status AS user_status FROM user_games WHERE user_id = $1 AND game_id = $2',
+      [userId, gameId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ user_rating: null, user_status: null });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error retrieving game data for user:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 export default router; 

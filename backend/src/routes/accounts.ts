@@ -72,16 +72,19 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) 
   console.log("Request to /api/accounts/login");
 
   try {
-    // Check if user exists
-    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    // Check if user exists by username OR email
+    const result = await pool.query(
+      'SELECT * FROM users WHERE username = $1 OR email = $1',
+      [username]
+    );
     const user = result.rows[0];
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Directly compare username and password (insecure for now)
-    if (username === user.username && password === user.password) {
+    // Directly compare password (insecure for now)
+    if (password === user.password) {
       console.log("Logging in with user:", user.id);
       return res.json({
         userId: user.id,

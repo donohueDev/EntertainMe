@@ -23,13 +23,13 @@ import {
 const AccountDashboard = () => {
   // useState used to declare and manage state variables which change with user interaction
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [games, setGames] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filteredGames, setFilteredGames] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
-  const { updateUser } = useUser(); // Destructure updateUser correctly
+  const { user: contextUser, updateUser } = useUser();
 
   // we use useEffect to perform side effects like data fetching/logging
   useEffect(() => {
@@ -48,7 +48,6 @@ const AccountDashboard = () => {
           // if not logged in we set user context to null and show popup
           setUser(null);
           setGames([]);
-          showLoginPopup();  // Show the login popup if the user is not logged in
         }
       } catch (err) {
         console.error('Failed to load user data:', err);
@@ -92,19 +91,25 @@ const AccountDashboard = () => {
   const logoutUser = async () => {
     try {
       // Clear localStorage
-      localStorage.clear();
-      localStorage.setItem('loggedIn', 'false');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('username');
+      localStorage.removeItem('loggedIn');
 
       // Update user context to reflect logout
-      updateUser({ id: null, username: null, isLoggedIn: 'false' });
+      updateUser({
+        userId: '',
+        username: '',
+        isLoggedIn: 'false'
+      });
 
       // Clear games and other related states
       setGames([]);
       setFilteredGames([]);
       setStatusFilter('all');
+      setUser(null);
 
-      // Navigate to Home screen or Login screen
-      navigate('/');
+      // Navigate to login page
+      navigate('/account');
     } catch (error) {
       console.error('Error during logout:', error);
     }
@@ -124,13 +129,8 @@ const AccountDashboard = () => {
     }
   }, [games, statusFilter]);
 
-  // alert used when user tries to review game without being logged in or gets to dashboard without being signed in through a bug
-  const showLoginPopup = () => {
-    if (window.confirm('You need to log in to access this page.')) {
-      navigate('/account');
-    } else {
-      navigate(-1);
-    }
+  const handleGameClick = (game) => {
+    navigate(`/game/${game.id}`, { state: { game } });
   };
 
   // loading text to display 
@@ -170,8 +170,10 @@ const AccountDashboard = () => {
           onChange={(e) => setStatusFilter(e.target.value)}
         >
           <MenuItem value="all">All Games</MenuItem>
-          <MenuItem value="played">Played</MenuItem>
+          <MenuItem value="completed">Completed</MenuItem>
           <MenuItem value="playing">Currently Playing</MenuItem>
+          <MenuItem value="dropped">Dropped</MenuItem>
+          <MenuItem value="planned">Planned</MenuItem>
         </Select>
       </FormControl>
       
@@ -184,7 +186,19 @@ const AccountDashboard = () => {
         <Grid container spacing={3}>
           {filteredGames.map((game) => (
             <Grid item xs={12} sm={6} md={4} key={game.id}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Card 
+                sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    transform: 'scale(1.02)',
+                    transition: 'transform 0.2s ease-in-out'
+                  }
+                }}
+                onClick={() => handleGameClick(game)}
+              >
                 <CardMedia
                   component="img"
                   height="200"

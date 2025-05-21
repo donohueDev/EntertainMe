@@ -20,17 +20,17 @@ export const UserProvider = ({ children }) => {
         const isLoggedIn = localStorage.getItem('loggedIn');
 
         // If all values exist, set them in the user state
-        if (username && userId && isLoggedIn) {
+        if (username && userId && isLoggedIn === 'true') {
           setUser({
             username,
             userId,
-            isLoggedIn: isLoggedIn === 'true',
+            isLoggedIn: 'true'
           });
         } else {
           setUser({
             isLoggedIn: 'false',
             username: '',
-            userId: '',
+            userId: ''
           });
         }
       } catch (error) {
@@ -46,11 +46,18 @@ export const UserProvider = ({ children }) => {
   // Function to update user data and localStorage
   const updateUser = (newUser) => {
     try {
-      setUser(newUser);
+      // Ensure isLoggedIn is always a string 'true' or 'false'
+      const updatedUser = {
+        ...newUser,
+        isLoggedIn: newUser.isLoggedIn ? 'true' : 'false'
+      };
+      
+      setUser(updatedUser);
+      
       // Save to localStorage
-      localStorage.setItem('username', newUser.username);
-      localStorage.setItem('userId', newUser.userId);
-      localStorage.setItem('loggedIn', newUser.isLoggedIn ? 'true' : 'false');
+      localStorage.setItem('username', updatedUser.username || '');
+      localStorage.setItem('userId', updatedUser.userId || '');
+      localStorage.setItem('loggedIn', updatedUser.isLoggedIn);
     } catch (error) {
       console.error("Error updating user data in localStorage", error);
     }

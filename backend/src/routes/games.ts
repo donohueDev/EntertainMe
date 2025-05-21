@@ -96,7 +96,7 @@ router.post('/rawg-games', async (_req: Request, res: Response) => {
     let page = 1;
     const pageSize = 100;
     let totalGamesInserted = 0;
-    const targetGames = 10;
+    const targetGames = 100;
 
     while (totalGamesInserted < targetGames) {
       const { data } = await axios.get<{ results: Game[] }>('https://api.rawg.io/api/games', {
@@ -141,6 +141,32 @@ router.get('/', async (_req: Request, res: Response) => {
     pool.query(sql, [], (err: Error | null, result) => {
       if (err) {
         console.error('Error fetching games:', err);
+        res.status(500).json({ error: 'Database error' });
+        return;
+      }
+      console.log('Found games:', result.rows.length);
+      res.json(result.rows);
+    });
+  } catch (error) {
+    console.error('Error handling request:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Search games by query
+router.get('/search', async (req: Request, res: Response) => {
+  try {
+    const { query } = req.query;
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    const sql = 'SELECT * FROM games WHERE name ILIKE $1 OR slug ILIKE $1 ORDER BY rating DESC';
+    
+    pool.query(sql, [`%${query}%`], (err: Error | null, result) => {
+      if (err) {
+        console.error('Error searching games:', err);
         res.status(500).json({ error: 'Database error' });
         return;
       }

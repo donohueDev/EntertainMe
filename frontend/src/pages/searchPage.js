@@ -32,14 +32,14 @@ const SearchPage = () => {
       const response = await axios.get(`http://localhost:3001/api/games/search`, {
         params: { query: text },
       });
-      setResults(response.data.games);
+      setResults(response.data);
     } catch (error) {
       console.error('Error fetching search results:', error);
     }
   };
 
   const handleGameClick = (game) => {
-    navigate('/game', { state: { game } });
+    navigate(`/game/${game.id}`, { state: { game } });
   };
 
   return (
