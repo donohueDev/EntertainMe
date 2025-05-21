@@ -1,4 +1,8 @@
 {
-  "name": "tempProject",
-  "displayName": "tempProject"
+  "appId" : "com.garrettdonohue.tempProject",
+  "name" : "tempProject",
+  "version" : "1.0.0",
+  "description" : "A simple app to entertain you",
+  "author" : "Garrett Donohue",
+  "displayName" : "tempProject"
 }

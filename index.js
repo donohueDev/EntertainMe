@@ -2,8 +2,17 @@
  * @format
  */
 
-import {AppRegistry} from 'react-native';
-import App from './App';
-import {name as appName} from './app.json';
 
-AppRegistry.registerComponent(appName, () => App);
+import React from 'react';
+
+import App from './App.js';
+
+import { name as appName } from './app.json';
+
+const RootApp = () => (
+  <GestureHandlerRootView style={{ flex: 1 }}>
+    <App />
+  </GestureHandlerRootView>
+);
+
+AppRegistry.registerComponent(appName, () => RootApp);
