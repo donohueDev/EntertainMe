@@ -10,7 +10,7 @@ import top100GamesRouter from './routes/top100Games';
 // import moviesRouter from '../routes/movies';
 // import showsRouter from '../routes/shows';
 // import protectedRoute from '../routes/protectedRoute';
-import { initDatabase } from './database/database';
+import initializeDatabase from './db/init';
 
 dotenv.config();
 
@@ -47,11 +47,10 @@ app.get('/', (req, res) => {
   res.json({ message: 'Welcome to the Entertainment API' });
 });
 
-// Initialize database when app starts
-initDatabase()
+// Initialize database and start server
+initializeDatabase()
   .then(() => {
     console.log('Database initialized successfully');
-    // Start your server here
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });

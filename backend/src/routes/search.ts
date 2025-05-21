@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
-import { initDatabase } from '../database/database';
-import { Database } from 'sqlite3';
+import pool from '../config/database';
+
 
 interface SearchQuery {
   query?: string;
@@ -35,22 +35,15 @@ router.get('/game', async (req: Request<{}, {}, {}, SearchQuery>, res: Response)
   }
 
   try {
-    const sql = `
-      SELECT * 
-      FROM games 
-      WHERE name LIKE '%' || ? || '%'
-      LIMIT 10;
-    `;
+    const result = await pool.query(
+      `SELECT * 
+       FROM games 
+       WHERE name ILIKE $1
+       LIMIT 10`,
+      [`%${query}%`]
+    );
 
-    db.all(sql, [query], (err: Error | null, rows: Game[]) => {
-      if (err) {
-        console.error('Error executing query:', err);
-        res.status(500).json({ error: 'Database error' });
-        return;
-      }
-
-      res.json({ games: rows });
-    });
+    res.json({ games: result.rows });
   } catch (error) {
     console.error('Error handling request:', error);
     res.status(500).json({ error: 'Internal server error' });

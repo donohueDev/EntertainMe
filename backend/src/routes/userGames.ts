@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { initDatabase } from "../database/database";
+import pool from "../config/database";
 
 interface UserGame {
   game_id: number;
@@ -24,14 +24,6 @@ interface UserRow {
 }
 
 const router = express.Router();
-let db: any; // Using any temporarily to resolve the type issue
-
-// Initialize database connection
-initDatabase().then((database) => {
-  db = database;
-}).catch((error) => {
-  console.error('Failed to initialize database:', error);
-});
 
 // Get games for a specific user by their ID (protected route)
 router.get('/:userId/games', async (req: Request, res: Response) => {
@@ -39,12 +31,13 @@ router.get('/:userId/games', async (req: Request, res: Response) => {
   console.log("Request to /api/userGames/:userId/games");
   console.log("User ID from params:", userId);
 
-  if (!db) {
-    return res.status(500).json({ message: 'Database not initialized' });
-  }
-
   try {
-    const userGames = db.prepare('SELECT game_id, rating AS user_rating, status AS user_status FROM user_games WHERE user_id = ?').all(userId) as UserGame[];
+    // Get user's games with their ratings and status
+    const userGamesResult = await pool.query(
+      'SELECT game_id, rating AS user_rating, status AS user_status FROM user_games WHERE user_id = $1',
+      [userId]
+    );
+    const userGames = userGamesResult.rows as UserGame[];
     console.log("User's games:", userGames);
 
     if (!userGames || userGames.length === 0) {
@@ -54,7 +47,12 @@ router.get('/:userId/games', async (req: Request, res: Response) => {
     const gameIds = userGames.map((game: UserGame) => game.game_id);
     console.log("Game IDs:", gameIds);
 
-    const games = db.prepare('SELECT * FROM games WHERE id IN (' + gameIds.map(() => '?').join(', ') + ')').all(...gameIds) as Game[];
+    // Get game details for all user's games
+    const gamesResult = await pool.query(
+      'SELECT * FROM games WHERE id = ANY($1)',
+      [gameIds]
+    );
+    const games = gamesResult.rows as Game[];
     console.log("Game details:", games);
 
     const combinedGames = games.map((game: Game) => {
@@ -74,35 +72,44 @@ router.get('/:userId/games', async (req: Request, res: Response) => {
 });
 
 // Post route for submitting ratings
-router.post('/ratings', (req: Request<{}, {}, RatingRequest>, res: Response) => {
+router.post('/ratings', async (req: Request<{}, {}, RatingRequest>, res: Response) => {
   const { username, gameId, rating, status } = req.body;
   console.log("Request to /api/ratings");
 
-  if (!db) {
-    return res.status(500).json({ message: 'Database not initialized' });
-  }
-
   try {
-    const userRow = db.prepare('SELECT id FROM users WHERE username = ?').get(username) as UserRow;
+    // Get user ID from username
+    const userResult = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userRow = userResult.rows[0] as UserRow;
+    
     if (!userRow) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     const userId = userRow.id;
-    const existingRating = db.prepare('SELECT * FROM user_games WHERE user_id = ? AND game_id = ?').get(userId, gameId);
+
+    // Check if rating exists
+    const existingRatingResult = await pool.query(
+      'SELECT * FROM user_games WHERE user_id = $1 AND game_id = $2',
+      [userId, gameId]
+    );
+    const existingRating = existingRatingResult.rows[0];
 
     if (existingRating) {
-      db.prepare(`
-        UPDATE user_games
-        SET rating = ?, status = ?
-        WHERE user_id = ? AND game_id = ?
-      `).run(rating, status, userId, gameId);
+      // Update existing rating
+      await pool.query(
+        `UPDATE user_games
+         SET rating = $1, status = $2
+         WHERE user_id = $3 AND game_id = $4`,
+        [rating, status, userId, gameId]
+      );
       res.status(200).json({ message: 'Rating updated successfully' });
     } else {
-      db.prepare(`
-        INSERT INTO user_games (user_id, game_id, rating, status)
-        VALUES (?, ?, ?, ?)
-      `).run(userId, gameId, rating, status);
+      // Insert new rating
+      await pool.query(
+        `INSERT INTO user_games (user_id, game_id, rating, status)
+         VALUES ($1, $2, $3, $4)`,
+        [userId, gameId, rating, status]
+      );
       res.status(200).json({ message: 'Rating submitted successfully' });
     }
   } catch (error) {

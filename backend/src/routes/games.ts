@@ -1,7 +1,6 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios';
-import { getDatabase } from '../database/database';
-import { Database } from 'sqlite3';
+import pool from '../config/database';
 
 const router = express.Router();
 
@@ -33,8 +32,6 @@ interface Game {
 // Function to process and insert game data into the database
 const processGameData = async (game: Game): Promise<void> => {
   try {
-    const db = getDatabase();
-    
     // Check if the required properties exist on the game object
     if (!game || !game.id || !game.slug || !game.name) {
       console.error('Skipping invalid game data:', game);
@@ -48,7 +45,7 @@ const processGameData = async (game: Game): Promise<void> => {
 
     // Check if the game already exists in the database
     const existingGame = await new Promise<{ id: number } | undefined>((resolve, reject) => {
-      db.get('SELECT id FROM games WHERE id = ?', [game.id], (err: Error | null, row: { id: number } | undefined) => {
+      pool.query('SELECT id FROM games WHERE id = $1', [game.id], (err: Error | null, row: { id: number } | undefined) => {
         if (err) reject(err);
         else resolve(row);
       });
@@ -61,12 +58,12 @@ const processGameData = async (game: Game): Promise<void> => {
     }
 
     // Insert the game data
-    const stmt = db.prepare(`
+    const stmt = pool.query(`
       INSERT INTO games (
         id, slug, name, released, tba, background_image, rating, rating_top, ratings_count,
         reviews_text_count, added, metacritic, playtime, suggestions_count,
         updated, user_game, reviews_count, saturated_color, dominant_color, esrb_rating, description_raw
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
     `);
 
     stmt.run(
@@ -146,10 +143,9 @@ router.post('/rawg-games', async (_req: Request, res: Response) => {
 // GET all games
 router.get('/', async (_req: Request, res: Response) => {
   try {
-    const db = getDatabase();
     const sql = 'SELECT * FROM games ORDER BY rating DESC;';
     
-    db.all(sql, [], (err: Error | null, rows: Game[]) => {
+    pool.query(sql, [], (err: Error | null, rows: Game[]) => {
       if (err) {
         console.error('Error fetching games:', err);
         res.status(500).json({ error: 'Database error' });
@@ -167,8 +163,7 @@ router.get('/', async (_req: Request, res: Response) => {
 // Test route to check database connection
 router.get('/test', (_req: Request, res: Response) => {
   try {
-    const db = getDatabase();
-    db.get('SELECT COUNT(*) as count FROM games', [], (err: Error | null, row: { count: number }) => {
+    pool.query('SELECT COUNT(*) as count FROM games', [], (err: Error | null, row: { count: number }) => {
       if (err) {
         console.error('Error checking games count:', err);
         res.status(500).json({ error: 'Database error' });

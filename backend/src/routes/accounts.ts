@@ -1,7 +1,6 @@
 import express, { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import sqlite3 from 'sqlite3';
-import { open, Database } from 'sqlite';
+import pool from '../config/database';
 
 interface User {
   id: number;
@@ -28,39 +27,32 @@ interface JwtPayload {
 
 const router = express.Router();
 
-// Initialize SQLite connection
-const dbPromise = open({
-  filename: './database/entertainme.db',
-  driver: sqlite3.Database
-});
-
 // Register endpoint to create new user and add to database
 router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Response) => {
   const { email, username, password } = req.body;
   console.log("Request to /api/accounts/register");
 
   try {
-    const db = await dbPromise;
-
     // Check if the username already exists
-    const existingUser = await db.get<User>('SELECT * FROM users WHERE username = ?', [username]);
-    if (existingUser) {
+    const existingUser = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (existingUser.rows.length > 0) {
       return res.status(400).json({ message: 'Username already taken. Please choose a different username.' });
     }
 
     // Check if the email already exists
-    const existingEmail = await db.get<User>('SELECT * FROM users WHERE email = ?', [email]);
-    if (existingEmail) {
+    const existingEmail = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (existingEmail.rows.length > 0) {
       return res.status(400).json({ message: 'Email already registered. Please use a different email.' });
     }
 
-    // Insert the new user into the database (password is stored in plain text)
-    const result = await db.run('INSERT INTO users (email, username, password) VALUES (?, ?, ?)', [email, username, password]);
+    // Insert the new user into the database
+    const result = await pool.query(
+      'INSERT INTO users (email, username, password) VALUES ($1, $2, $3) RETURNING id',
+      [email, username, password]
+    );
 
-    // Retrieve the userId of the newly inserted user
-    const userId = result.lastID;
+    const userId = result.rows[0].id;
 
-    // Send the response with userId and other necessary information
     return res.status(201).json({
       message: 'User registered successfully',
       userId: userId,
@@ -80,9 +72,10 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) 
   console.log("Request to /api/accounts/login");
 
   try {
-    const db = await dbPromise;
     // Check if user exists
-    const user = await db.get<User>('SELECT * FROM users WHERE username = ?', [username]);
+    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    const user = result.rows[0];
+    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -124,4 +117,4 @@ router.get('/me', (req: Request, res: Response) => {
   }
 });
 
-export { router as accountRouter }; 
+export { router as accountRouter };
