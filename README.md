@@ -55,5 +55,5 @@
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/entertainME.git
+git clone https://github.com/donohuedev/entertainME.git
 cd entertainME
