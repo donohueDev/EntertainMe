@@ -17,12 +17,13 @@
 - **PostgreSQL**
 - **JWT** for authentication
 - **RESTful API** design
+- **TypeScript**
 
 ### 🎨 Frontend
 - **React**
 - **React Router**
-- **Axios** for API requests
-- **Styled Components** or CSS Modules
+- **Axios** for API/HTTP requests
+- **Material-UI** for UI components and styling
 
 ### 🐳 DevOps (Planned)
 - **Docker** for containerization
@@ -33,7 +34,7 @@
 ## 🗂 Features
 
 - ✅ User authentication & profile management
-- 🎮 Track all types of media: **games**, **movies**, **shows**, and **anime**
+- 🎮 Track all types of media: **games**, (**movies**, **shows**, and **anime** to be added later)
 - 📝 Leave reviews, ratings, and personal notes 
 - 📊 Visual dashboards (upcoming)
 - 🔍 Filter & search functionality
