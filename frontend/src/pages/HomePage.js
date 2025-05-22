@@ -158,48 +158,90 @@ const HomePage = () => {
         </Typography>
       </Box>
   
-      {/* Game Grid */}
-      <Grid container spacing={3}>
-        {games.map((game) => (
-          <Grid item xs={12} sm={6} md={4} key={game.id}>
-            <Card 
-              sx={{ 
-                height: '100%', 
-                display: 'flex', 
-                flexDirection: 'column',
-                cursor: 'pointer',
-                '&:hover': {
-                  transform: 'scale(1.02)',
-                  transition: 'transform 0.2s ease-in-out'
-                }
-              }}
-              onClick={() => navigate(`/game/${game.id}`, { state: { game } })}
-            >
-              <CardMedia
-                component="img"
-                height="200"
-                image={game.background_image}
-                alt={game.name}
-                sx={{ objectFit: 'cover' }}
-              />
-              <CardContent>
-                <Typography 
-                  gutterBottom 
-                  variant="h6" 
-                  component="div"
-                  sx={{
-                    fontWeight: 'bold',
-                    textAlign: 'center',
-                    color: 'white'
-                  }}
-                >
-                  {game.name}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+      <Typography 
+          variant="h4" 
+          sx={{ 
+            fontWeight: 'bold', 
+            fontFamily: 'Varela Round',
+            textAlign: 'left', 
+            flexGrow: 1, 
+            color: 'white' 
+          }}
+        >
+          Top 100 Games
+        </Typography>
+      {/* Horizontal scroll container with 2 rows */}
+      <Box
+  sx={{
+    display: 'grid',
+    gridAutoFlow: 'column',
+    gridTemplateRows: 'repeat(2, 1fr)',
+    overflowX: 'auto',
+    overflowY: 'hidden',
+    gap: 3,
+    py: 1,
+    '&::-webkit-scrollbar': { height: 8 },
+    '&::-webkit-scrollbar-thumb': { background: '#888', borderRadius: 4 },
+    height: 400,
+  }}
+>
+  {games.map((game) => (
+    <Card
+      key={game.id}
+      sx={{
+        width: 200,
+        height: 180,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between', // Spread out children
+        cursor: 'pointer',
+        boxSizing: 'border-box',
+        '&:hover': {
+          transform: 'scale(1.03)',
+          transition: 'transform 0.2s',
+        },
+        backgroundColor: '#1c1c1c',
+      }}
+      onClick={() => navigate(`/game/${game.id}`, { state: { game } })}
+    >
+      <CardMedia
+        component="img"
+        height="130"
+        image={game.background_image}
+        alt={game.name}
+        sx={{ objectFit: 'cover' }}
+      />
+<CardContent
+  sx={{
+    height: 30,
+    display: 'flex',
+    alignItems: 'center',       // Vertically center the content
+    justifyContent: 'center',   // Horizontally center the text
+    textAlign: 'center',        // Center text inside the Typography
+  }}
+>
+  <Typography
+    variant="h8"
+    component="div"
+    sx={{
+      fontWeight: 'bold',
+      fontFamily: 'sans-serif',
+      color: 'white',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      display: '-webkit-box',
+      WebkitLineClamp: 2,       // Allows wrapping to 2 lines
+      WebkitBoxOrient: 'vertical',
+    }}
+  >
+    {game.name}
+  </Typography>
+</CardContent>
+
+    </Card>
+  ))}
+</Box>
+
     </Container>
   );  
 };

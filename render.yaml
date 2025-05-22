@@ -1,0 +1,36 @@
+services:
+  # Backend API service
+  - type: web
+    name: entertainment-reviews-api
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: entertainmentDB
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+
+  # Frontend service
+  - type: web
+    name: entertainmentME
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm start
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://entertainment-reviews-api.onrender.com
+
+databases:
+  - name: entertainmentDB
+    databaseName: entertainmentDB
+    user: entertainmentDB-user
+    plan: free 

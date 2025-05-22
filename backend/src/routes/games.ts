@@ -106,7 +106,7 @@ router.post('/rawg-games', async (_req: Request, res: Response) => {
       const games = data.results;
       if (!games.length) break;
 
-      // Process games sequentially instead of concurrently
+      // Process games sequentially
       for (const game of games) {
         if (totalGamesInserted >= targetGames) break;
         
@@ -188,7 +188,8 @@ router.get('/test', (_req: Request, res: Response) => {
         res.status(500).json({ error: 'Database error' });
         return;
       }
-      res.json({ message: 'Database is working', gamesCount: result.rowCount });
+      console.log('Database connection successful, games count:', result.rows[0].count);
+      res.json({ message: 'Database is working', gamesCount: result.rows[0].count });
     });
   } catch (error) {
     console.error('Error in test route:', error);
@@ -218,7 +219,7 @@ router.get('/:id', async (req: Request, res: Response) => {
         res.status(404).json({ error: 'Game not found' });
         return;
       }
-
+      console.log('Found game using search query:', result.rows[0]);
       res.json(result.rows[0]);
     });
   } catch (error) {
