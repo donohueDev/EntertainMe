@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useUser } from '../context/userContext'; // Only import useUser
+import { useUser } from '../context/userContext';
 import API_BASE_URL from '../config';
 import {
   Box,
@@ -23,26 +23,29 @@ import {
 import Rating from '@mui/material/Rating';
 
 const AccountDashboard = () => {
-  // useState used to declare and manage state variables which change with user interaction
-  const [user, setUser] = useState(null);
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filteredGames, setFilteredGames] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
-  const { user: contextUser, updateUser } = useUser();
+  const { isAuthenticated, getUserInfo, logout } = useUser();
 
   // Fetch user's games when component mounts
   useEffect(() => {
     const fetchUserGames = async () => {
-      if (!contextUser?.userId) {
+      if (!isAuthenticated) {
         setLoading(false);
         return;
       }
 
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/userGames/${contextUser.userId}/games`);
+        const userInfo = getUserInfo();
+        if (!userInfo?.userId) {
+          throw new Error('User information not found');
+        }
+
+        const response = await axios.get(`${API_BASE_URL}/api/userGames/${userInfo.userId}/games`);
         setGames(response.data);
         setFilteredGames(response.data);
       } catch (error) {
@@ -54,63 +57,7 @@ const AccountDashboard = () => {
     };
 
     fetchUserGames();
-  }, [contextUser]);
-
-  // we use useEffect to perform side effects like data fetching/logging
-  useEffect(() => {
-    // getUserData runs once when component is mounted with an empty dependency array
-    const getUserDataFromStorage = async () => {
-      try {
-        // Using localStorage instead of AsyncStorage
-        const storedUserId = localStorage.getItem('userId');
-        const storedUsername = localStorage.getItem('username');
-        const storeLogin = localStorage.getItem('loggedIn');
-
-        // if the login variable is set to true then we update the user context
-        if (storeLogin === 'true' && storedUserId) {
-          setUser({ id: storedUserId, username: storedUsername });
-        } else {
-          // if not logged in we set user context to null and show popup
-          setUser(null);
-          setGames([]);
-        }
-      } catch (err) {
-        console.error('Failed to load user data:', err);
-        setError('Failed to load user data.');
-      } finally {
-        // once processed set loading state to false
-        setLoading(false);
-      }
-    };
-
-    getUserDataFromStorage();
-  }, []);
-
-  // function used to logout user - clears localStorage and updates user context
-  const logoutUser = async () => {
-    try {
-      // Clear localStorage
-      localStorage.removeItem('userId');
-      localStorage.removeItem('username');
-      localStorage.removeItem('loggedIn');
-
-      // Update user context to reflect logout
-      updateUser({
-        userId: '',
-        username: '',
-        isLoggedIn: 'false'
-      });
-
-      // Clear games and other related states
-      setGames([]);
-      setFilteredGames([]);
-      setUser(null);
-      navigate('/');
-    } catch (error) {
-      console.error('Error during logout:', error);
-      setError('Failed to logout. Please try again.');
-    }
-  };
+  }, [isAuthenticated, getUserInfo]);
 
   // Filter games based on status
   const handleStatusFilterChange = (event) => {
@@ -123,6 +70,15 @@ const AccountDashboard = () => {
       const filtered = games.filter(game => game.user_status === selectedStatus);
       setFilteredGames(filtered);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  const handleGameClick = (game) => {
+    navigate(`/game/${game.id}`, { state: { game } });
   };
 
   // If loading, show loading spinner
@@ -143,15 +99,15 @@ const AccountDashboard = () => {
     );
   }
 
-  // If not logged in, show message and login button
-  if (!user) {
+  // If not authenticated, show message and login button
+  if (!isAuthenticated) {
     return (
       <Container>
         <Box mt={4} textAlign="center">
           <Typography variant="h5" gutterBottom>
             Please log in to view your account
           </Typography>
-          <Button variant="contained" color="primary" onClick={() => navigate('/login')}>
+          <Button variant="contained" color="primary" onClick={() => navigate('/account')}>
             Login
           </Button>
         </Box>
@@ -159,25 +115,62 @@ const AccountDashboard = () => {
     );
   }
 
-  // If no games in collection, show message and button to browse games
-  if (games.length === 0) {
+  const userInfo = getUserInfo();
+
+  // If no games in collection or no games in selected category, show message and button to browse games
+  if (games.length === 0 || filteredGames.length === 0) {
+    const categoryMessage = statusFilter !== 'all' 
+      ? `You haven't added any games to your ${statusFilter.toLowerCase()} collection yet`
+      : "You haven't added any games to your collection yet";
+
     return (
       <Container>
-        <Box mt={4} textAlign="center">
-          <Typography variant="h5" gutterBottom>
-            You haven't added any games to your collection yet
+        <Box mt={4}>
+          <Typography variant="h4" gutterBottom>
+            Welcome, {userInfo?.username}!
           </Typography>
-          <Typography variant="body1" color="text.secondary" paragraph>
-            Browse our collection of games and start rating your favorites!
-          </Typography>
-          <Button 
-            variant="contained" 
-            color="primary" 
-            onClick={() => navigate('/')}
-            sx={{ mt: 2 }}
-          >
-            Browse Games
-          </Button>
+          
+          <Box mb={3}>
+            <FormControl fullWidth>
+              <InputLabel>Filter by Status</InputLabel>
+              <Select
+                value={statusFilter}
+                onChange={handleStatusFilterChange}
+                label="Filter by Status"
+              >
+                <MenuItem value="all">All Games</MenuItem>
+                <MenuItem value="planned">Planned</MenuItem>
+                <MenuItem value="playing">Currently Playing</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+                <MenuItem value="dropped">Dropped</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+
+          <Box textAlign="center">
+            <Typography variant="body1" color="text.secondary" paragraph>
+              {categoryMessage}
+            </Typography>
+            <Typography variant="body1" color="text.secondary" paragraph>
+              Browse our collection of games and start rating your favorites!
+            </Typography>
+            <Button 
+              variant="contained" 
+              color="primary" 
+              onClick={() => navigate('/')}
+              sx={{ mt: 2 }}
+            >
+              Browse Games
+            </Button>
+            <Button
+              variant="outlined" 
+              color="secondary" 
+              onClick={handleLogout}
+              sx={{ mt: 2, ml: 2 }}
+            >
+              Logout
+            </Button>
+          </Box>
         </Box>
       </Container>
     );
@@ -187,7 +180,7 @@ const AccountDashboard = () => {
     <Container>
       <Box mt={4}>
         <Typography variant="h4" gutterBottom>
-          Welcome, {user.username}!
+          Welcome, {userInfo?.username}!
         </Typography>
         
         <Box mb={3}>
@@ -199,7 +192,7 @@ const AccountDashboard = () => {
               label="Filter by Status"
             >
               <MenuItem value="all">All Games</MenuItem>
-              <MenuItem value="not played">Not Played</MenuItem>
+              <MenuItem value="Planned">Planned</MenuItem>
               <MenuItem value="playing">Currently Playing</MenuItem>
               <MenuItem value="completed">Completed</MenuItem>
               <MenuItem value="dropped">Dropped</MenuItem>
@@ -210,7 +203,16 @@ const AccountDashboard = () => {
         <Grid container spacing={3}>
           {filteredGames.map((game) => (
             <Grid item xs={12} sm={6} md={4} key={game.id}>
-              <Card>
+              <Card 
+                sx={{ 
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s',
+                  '&:hover': {
+                    transform: 'scale(1.02)'
+                  }
+                }}
+                onClick={() => handleGameClick(game)}
+              >
                 <CardMedia
                   component="img"
                   height="140"
@@ -235,7 +237,7 @@ const AccountDashboard = () => {
         </Grid>
 
         <Box mt={4} display="flex" justifyContent="center">
-          <Button variant="contained" color="secondary" onClick={logoutUser}>
+          <Button variant="contained" color="secondary" onClick={handleLogout}>
             Logout
           </Button>
         </Box>

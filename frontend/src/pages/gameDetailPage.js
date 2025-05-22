@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import API_BASE_URL from '../config';
-import { useUser } from '../context/userContext'; // Only import useUser
+import { useUser } from '../context/userContext';
 import {
   Box,
   Typography,
@@ -35,13 +35,7 @@ const GameDetailPage = () => {
   const [loading, setLoading] = useState(false);
   const [userGameData, setUserGameData] = useState(null);
   const navigate = useNavigate();
-  const { user } = useUser();
-
-  // Check if user is properly authenticated
-  const isAuthenticated = user?.isLoggedIn === 'true' && 
-                         localStorage.getItem('loggedIn') === 'true' && 
-                         localStorage.getItem('userId') && 
-                         localStorage.getItem('username');
+  const { isAuthenticated, getUserInfo } = useUser();
 
   // Function to get English description
   const getEnglishDescription = (description) => {
@@ -60,7 +54,12 @@ const GameDetailPage = () => {
     const fetchUserGameData = async () => {
       if (isAuthenticated && game?.id) {
         try {
-          const response = await axios.get(`${API_BASE_URL}/api/userGames/${user.userId}/games/${game.id}`);
+          const userInfo = getUserInfo();
+          if (!userInfo?.userId) {
+            throw new Error('User information not found');
+          }
+
+          const response = await axios.get(`${API_BASE_URL}/api/userGames/${userInfo.userId}/games/${game.id}`);
           if (response.data) {
             setUserGameData(response.data);
             setRating(response.data.user_rating || 0);
@@ -73,7 +72,7 @@ const GameDetailPage = () => {
     };
 
     fetchUserGameData();
-  }, [user, game, isAuthenticated]);
+  }, [isAuthenticated, getUserInfo, game?.id]);
 
   const handleRating = async () => {
     if (!isAuthenticated) {
@@ -83,8 +82,13 @@ const GameDetailPage = () => {
 
     setLoading(true);
     try {
+      const userInfo = getUserInfo();
+      if (!userInfo?.userId) {
+        throw new Error('User information not found');
+      }
+
       const response = await axios.post(`${API_BASE_URL}/api/userGames/ratings`, {
-        username: user.username,
+        username: userInfo.username,
         gameId: game.id,
         rating: Math.round(rating),
         status,

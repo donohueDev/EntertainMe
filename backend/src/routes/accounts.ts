@@ -1,6 +1,9 @@
 import express, { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import bcrypt from  'bcrypt';
 import pool from '../config/database';
+import dotenv from 'dotenv';
+dotenv.config();
 
 interface User {
   id: number;
@@ -45,10 +48,12 @@ router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Resp
       return res.status(400).json({ message: 'Email already registered. Please use a different email.' });
     }
 
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
     // Insert the new user into the database
     const result = await pool.query(
       'INSERT INTO users (email, username, password) VALUES ($1, $2, $3) RETURNING id',
-      [email, username, password]
+      [email, username, hashedPassword]
     );
 
     const userId = result.rows[0].id;
@@ -83,21 +88,33 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) 
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Directly compare password (insecure for now)
-    if (password === user.password) {
-      console.log("Logging in with user:", user.id);
-      return res.json({
-        userId: user.id,
-        username: user.username,
-      });
-    } else {
+    // Check if the password is correct using bcrypt
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
       return res.status(400).json({ message: 'Invalid credentials' });
+    }else {
+      console.log("Password is valid");
     }
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      process.env.JWT_SECRET!,
+      { expiresIn: '1h' }
+    );
+    console.log("Token generated:", token);
+    // Send the token in the response
+    return res.json({
+      token,
+      userId: user.id,
+      username: user.username,
+      email: user.email
+    });
   } catch (error) {
     console.error('Login failed:', error);
     return res.status(500).json({ message: 'Internal server error during login' });
   }
 });
+
 
 // Protected route to get the current user's data
 router.get('/me', (req: Request, res: Response) => {

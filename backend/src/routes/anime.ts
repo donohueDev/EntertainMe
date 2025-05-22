@@ -1,6 +1,4 @@
 import express, { Request, Response } from 'express';
-import { initDatabase } from '../../../database/database';
-import { Database } from 'sqlite3';
 
 interface Anime {
   id: number;

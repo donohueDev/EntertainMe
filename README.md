@@ -34,7 +34,7 @@
 ## 🗂 Features
 
 - ✅ User authentication & profile management
-- 🎮 Track all types of media: **games**, (**movies**, **shows**, and **anime** to be added later)
+- 🎮 Track all types of media: **games** (**movies**, **shows**, and **anime** to be added later)
 - 📝 Leave reviews, ratings, and personal notes 
 - 📊 Visual dashboards (upcoming)
 - 🔍 Filter & search functionality

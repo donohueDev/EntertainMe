@@ -1,6 +1,7 @@
 // context/userContext.js used to establish a global context for the user upon app loading
 // allows for user context to be accessed across files and pages
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { jwtDecode } from 'jwt-decode';
 
 // create context using react library
 const UserContext = createContext();
@@ -8,68 +9,72 @@ const UserContext = createContext();
 // export userprovider to establish link between all pages
 // initialize data to be empty
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState({ isLoggedIn: 'false', username: '', userId: '' });
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const fetchUserData = () => {
+    const initializeAuth = () => {
       try {
-        // Fetch individual values from localStorage
-        const username = localStorage.getItem('username');
-        const userId = localStorage.getItem('userId');
-        const isLoggedIn = localStorage.getItem('loggedIn');
-
-        // If all values exist, set them in the user state
-        if (username && userId && isLoggedIn === 'true') {
-          setUser({
-            username,
-            userId,
-            isLoggedIn: 'true'
-          });
+        const token = localStorage.getItem('token');
+        if (token) {
+          // Verify token is valid by attempting to decode it
+          const decoded = jwtDecode(token);
+          setIsAuthenticated(true);
         } else {
-          setUser({
-            isLoggedIn: 'false',
-            username: '',
-            userId: ''
-          });
+          setIsAuthenticated(false);
         }
       } catch (error) {
-        console.error('Error loading user data from localStorage', error);
+        console.error('Error initializing auth:', error);
+        setIsAuthenticated(false);
+        localStorage.removeItem('token');
       } finally {
         setIsInitializing(false);
       }
     };
 
-    fetchUserData();
+    initializeAuth();
   }, []);
 
-  // Function to update user data and localStorage
-  const updateUser = (newUser) => {
+  const login = (token) => {
+    localStorage.setItem('token', token);
+    setIsAuthenticated(true);
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    setIsAuthenticated(false);
+  };
+
+  const getUserInfo = () => {
     try {
-      // Ensure isLoggedIn is always a string 'true' or 'false'
-      const updatedUser = {
-        ...newUser,
-        isLoggedIn: newUser.isLoggedIn ? 'true' : 'false'
-      };
-      
-      setUser(updatedUser);
-      
-      // Save to localStorage
-      localStorage.setItem('username', updatedUser.username || '');
-      localStorage.setItem('userId', updatedUser.userId || '');
-      localStorage.setItem('loggedIn', updatedUser.isLoggedIn);
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+      return jwtDecode(token);
     } catch (error) {
-      console.error("Error updating user data in localStorage", error);
+      console.error('Error getting user info:', error);
+      return null;
     }
   };
 
   // setup formatting for user context provider to be used in app.js
   return (
-    <UserContext.Provider value={{ user, setUser, updateUser, isInitializing }}>
+    <UserContext.Provider value={{ 
+      isAuthenticated, 
+      isInitializing,
+      login,
+      logout,
+      getUserInfo
+    }}>
       {children}
     </UserContext.Provider>
   );
 };
 
 // set user context on export
-export const useUser = () => useContext(UserContext);
+export const useUser = () => {
+  const context = useContext(UserContext);
+  if (!context) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+  return context;
+};

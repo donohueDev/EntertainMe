@@ -22,9 +22,12 @@ const LoginPage = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { updateUser } = useUser();
+  const { login } = useUser();
 
-  const handleLogin = async () => {
+  const handleLogin = async (e) => {
+    if (e) {
+      e.preventDefault();
+    }
     setIsLoading(true);
     setErrorMessage('');
 
@@ -34,26 +37,19 @@ const LoginPage = () => {
         password,
       });
 
-      if (response.data.userId && response.data.username) {
-        updateUser({
-          username: response.data.username,
-          isLoggedIn: 'true',
-          userId: response.data.userId.toString(),
-        });
+      if (response.data.token) {
+        // First store the token and update auth state
+        login(response.data.token);
         
-        console.log('USER logged in:', response.data.username);
-
-        // Store user information in localStorage for persistence
-        localStorage.setItem('userId', response.data.userId.toString());
-        localStorage.setItem('username', response.data.username);
-        localStorage.setItem('loggedIn', 'true');
-
         // Clear the input fields
         setUsername('');
         setPassword('');
 
-        // Navigate to the Account Dashboard
-        navigate('/account/dashboard');
+        // Add a small delay to ensure state is updated
+        setTimeout(() => {
+          // Navigate to the Account Dashboard
+          navigate('/account/dashboard', { replace: true });
+        }, 100);
       } else {
         setErrorMessage('Login failed. Please check your credentials.');
       }
@@ -89,7 +85,11 @@ const LoginPage = () => {
             Login
           </Typography>
 
-          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box 
+            component="form" 
+            onSubmit={handleLogin}
+            sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+          >
             <TextField
               fullWidth
               id="username"
@@ -120,9 +120,9 @@ const LoginPage = () => {
             )}
 
             <Button
+              type="submit"
               variant="contained"
               size="large"
-              onClick={handleLogin}
               disabled={isLoading}
               sx={{ mt: 2 }}
             >

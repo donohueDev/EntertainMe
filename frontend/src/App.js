@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline, AppBar, Toolbar, IconButton, Typography, Container, Box, CircularProgress } from '@mui/material';
+import { CssBaseline, AppBar, Toolbar, IconButton, Container, Box, CircularProgress } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
@@ -31,46 +31,33 @@ const darkTheme = createTheme({
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
-  const { user } = useUser();
+  const { isAuthenticated, isInitializing } = useUser();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check both the user context and localStorage to ensure proper authentication
-    const isAuthenticated = user?.isLoggedIn === 'true' && 
-                          localStorage.getItem('loggedIn') === 'true' && 
-                          localStorage.getItem('userId') && 
-                          localStorage.getItem('username');
-
-    if (!isAuthenticated) {
+    if (!isInitializing && !isAuthenticated) {
       navigate('/account', { replace: true });
     }
-  }, [user, navigate]);
+  }, [isAuthenticated, isInitializing, navigate]);
 
-  // Double check authentication before rendering
-  const isAuthenticated = user?.isLoggedIn === 'true' && 
-                         localStorage.getItem('loggedIn') === 'true' && 
-                         localStorage.getItem('userId') && 
-                         localStorage.getItem('username');
-
-  if (!isAuthenticated) {
-    return null;
+  if (isInitializing) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
-  return children;
+  // Only render children if authenticated
+  return isAuthenticated ? children : null;
 };
 
 // Navigation component
 const Navigation = () => {
-  const { user } = useUser();
+  const { isAuthenticated } = useUser();
   const navigate = useNavigate();
 
   const handleAccountClick = () => {
-    // Check both the user context and localStorage
-    const isAuthenticated = user?.isLoggedIn === 'true' && 
-                          localStorage.getItem('loggedIn') === 'true' && 
-                          localStorage.getItem('userId') && 
-                          localStorage.getItem('username');
-
     if (!isAuthenticated) {
       navigate('/account', { replace: true });
     } else {
@@ -97,7 +84,6 @@ const Navigation = () => {
 
 // Create a new component to handle routing
 const AppRoutes = () => {
-  const { user } = useUser();
   
   return (
     <Routes>
