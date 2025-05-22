@@ -18,13 +18,13 @@ services:
         generateValue: true
 
   # Frontend service
-  - type: web
+  - type: static
     name: entertainmentME
-    env: node
+    env: static
     region: oregon
     plan: free
     buildCommand: cd frontend && npm install && npm run build
-    startCommand: cd frontend && npx serve -s build
+    staticPublishPath: frontend/build
     envVars:
       - key: REACT_APP_API_URL
         value: https://entertainment-reviews-api.onrender.com
