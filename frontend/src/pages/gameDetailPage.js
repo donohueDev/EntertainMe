@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE_URL from '../config';
 import { useUser } from '../context/userContext'; // Only import useUser
 import {
   Box,
@@ -59,7 +60,7 @@ const GameDetailPage = () => {
     const fetchUserGameData = async () => {
       if (isAuthenticated && game?.id) {
         try {
-          const response = await axios.get(`http://localhost:3001/api/userGames/${user.userId}/games/${game.id}`);
+          const response = await axios.get(`${API_BASE_URL}/api/userGames/${user.userId}/games/${game.id}`);
           if (response.data) {
             setUserGameData(response.data);
             setRating(response.data.user_rating || 0);
@@ -80,10 +81,9 @@ const GameDetailPage = () => {
       return;
     }
 
-
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:3001/api/userGames/ratings', {
+      const response = await axios.post(`${API_BASE_URL}/api/userGames/ratings`, {
         username: user.username,
         gameId: game.id,
         rating: Math.round(rating),
@@ -206,6 +206,8 @@ const GameDetailPage = () => {
                   <InputLabel id="game-status-label">Game Status</InputLabel>
                   <Select
                     labelId="game-status-label"
+                    id="game-status"
+                    name="game-status"
                     value={status}
                     label="Game Status"
                     onChange={(e) => setStatus(e.target.value)}

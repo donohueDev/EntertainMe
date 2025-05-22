@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../context/userContext'; // Only import useUser
+import API_BASE_URL from '../config';
 import {
   Box,
   Typography,
@@ -31,6 +32,29 @@ const AccountDashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
   const { user: contextUser, updateUser } = useUser();
+
+  // Fetch user's games when component mounts
+  useEffect(() => {
+    const fetchUserGames = async () => {
+      if (!contextUser?.userId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/userGames/${contextUser.userId}/games`);
+        setGames(response.data);
+        setFilteredGames(response.data);
+      } catch (error) {
+        console.error('Failed to fetch user games:', error);
+        setError('Failed to load your games. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserGames();
+  }, [contextUser]);
 
   // we use useEffect to perform side effects like data fetching/logging
   useEffect(() => {
@@ -62,32 +86,6 @@ const AccountDashboard = () => {
     getUserDataFromStorage();
   }, []);
 
-  // we use focus effect so that the page refetches games ever time we navigate to the page
-  // is called when page is loaded or user changes
-  useEffect(() => {
-    if (user?.id) {
-      fetchUserGames(user.id);  // allows page to update list of reviewed games
-    }
-  }, [user]);
-
-  // this function fetches all games reviewed by the user using backend route 
-  const fetchUserGames = async (userId) => {
-    try {
-      setGames([]); // Clear previous games
-      const response = await axios.get(`http://localhost:3001/api/userGames/${userId}/games`);
-      
-      // If response data exists and is an array, update the games state
-      if (Array.isArray(response.data)) {
-        setGames(response.data); // If there are no games, response.data will be an empty array
-      } else {
-        setGames([]); // If the response is not an array, set to an empty array
-      }
-    } catch (error) {
-      console.error('Failed to fetch user games:', error);
-      setError('Failed to load user games. Please try again.');
-    }
-  };
-
   // function used to logout user - clears localStorage and updates user context
   const logoutUser = async () => {
     try {
@@ -106,104 +104,117 @@ const AccountDashboard = () => {
       // Clear games and other related states
       setGames([]);
       setFilteredGames([]);
-      setStatusFilter('all');
       setUser(null);
-
-      // Navigate to login page
-      navigate('/account');
+      navigate('/');
     } catch (error) {
       console.error('Error during logout:', error);
+      setError('Failed to logout. Please try again.');
     }
   };
 
-  // effect runs when user changes 
-  useEffect(() => {
-    console.log("User information after change:", user);
-  }, [user]);
+  // Filter games based on status
+  const handleStatusFilterChange = (event) => {
+    const selectedStatus = event.target.value;
+    setStatusFilter(selectedStatus);
 
-  // use effect to run when status filter is changed or games list changes
-  useEffect(() => {
-    if (statusFilter === 'all') {
-      setFilteredGames(games); // Show all games when filter is "all"
+    if (selectedStatus === 'all') {
+      setFilteredGames(games);
     } else {
-      setFilteredGames(games.filter((game) => game.user_status === statusFilter)); // Filter based on user status
+      const filtered = games.filter(game => game.user_status === selectedStatus);
+      setFilteredGames(filtered);
     }
-  }, [games, statusFilter]);
-
-  const handleGameClick = (game) => {
-    navigate(`/game/${game.id}`, { state: { game } });
   };
 
-  // loading text to display 
+  // If loading, show loading spinner
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress />
       </Box>
     );
   }
 
-  // if theres an erorr display error message with option to navigate to account page to try again 
+  // If error, show error message
   if (error) {
     return (
-      <Container sx={{ mt: 4 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-        <Button variant="contained" onClick={() => navigate('/account')}>
-          Login?
-        </Button>
+      <Container>
+        <Alert severity="error">{error}</Alert>
       </Container>
     );
   }
 
-  // main content for dashboard view
+  // If not logged in, show message and login button
+  if (!user) {
+    return (
+      <Container>
+        <Box mt={4} textAlign="center">
+          <Typography variant="h5" gutterBottom>
+            Please log in to view your account
+          </Typography>
+          <Button variant="contained" color="primary" onClick={() => navigate('/login')}>
+            Login
+          </Button>
+        </Box>
+      </Container>
+    );
+  }
+
+  // If no games in collection, show message and button to browse games
+  if (games.length === 0) {
+    return (
+      <Container>
+        <Box mt={4} textAlign="center">
+          <Typography variant="h5" gutterBottom>
+            You haven't added any games to your collection yet
+          </Typography>
+          <Typography variant="body1" color="text.secondary" paragraph>
+            Browse our collection of games and start rating your favorites!
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={() => navigate('/')}
+            sx={{ mt: 2 }}
+          >
+            Browse Games
+          </Button>
+        </Box>
+      </Container>
+    );
+  }
+
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ color: 'white' }}>
-        Welcome, {user?.username}!
-      </Typography>
-      
-      <FormControl fullWidth sx={{ mb: 4 }}>
-        <InputLabel id="status-filter-label">Filter by status</InputLabel>
-        <Select
-          labelId="status-filter-label"
-          value={statusFilter}
-          label="Filter by status"
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <MenuItem value="all">All Games</MenuItem>
-          <MenuItem value="completed">Completed</MenuItem>
-          <MenuItem value="playing">Currently Playing</MenuItem>
-          <MenuItem value="dropped">Dropped</MenuItem>
-          <MenuItem value="planned">Planned</MenuItem>
-        </Select>
-      </FormControl>
-      
-      {/* Display a message if no games match the filter or display games using flatlist */}
-      {filteredGames.length === 0 ? (
-        <Typography variant="h6" sx={{ textAlign: 'center', color: 'white' }}>
-          No games found. Please submit a review and come back here to view.
+    <Container>
+      <Box mt={4}>
+        <Typography variant="h4" gutterBottom>
+          Welcome, {user.username}!
         </Typography>
-      ) : (
+        
+        <Box mb={3}>
+          <FormControl fullWidth>
+            <InputLabel>Filter by Status</InputLabel>
+            <Select
+              value={statusFilter}
+              onChange={handleStatusFilterChange}
+              label="Filter by Status"
+            >
+              <MenuItem value="all">All Games</MenuItem>
+              <MenuItem value="not played">Not Played</MenuItem>
+              <MenuItem value="playing">Currently Playing</MenuItem>
+              <MenuItem value="completed">Completed</MenuItem>
+              <MenuItem value="dropped">Dropped</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+
         <Grid container spacing={3}>
           {filteredGames.map((game) => (
             <Grid item xs={12} sm={6} md={4} key={game.id}>
-              <Card 
-                sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    transform: 'scale(1.02)',
-                    transition: 'transform 0.2s ease-in-out'
-                  }
-                }}
-                onClick={() => handleGameClick(game)}
-              >
+              <Card>
                 <CardMedia
                   component="img"
-                  height="200"
-                  image={game.background_image || 'https://eagle-sensors.com/hbc-power-control-solutions/unavailable-image/'}
+                  height="140"
+                  image={game.background_image || 'https://via.placeholder.com/140'}
                   alt={game.name}
                 />
                 <CardContent>
@@ -211,33 +222,23 @@ const AccountDashboard = () => {
                     {game.name}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Status: {game.user_status || 'N/A'}
+                    Status: {game.user_status || 'Not played'}
                   </Typography>
-                  {game.user_status !== 'planned' && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        Rating:
-                      </Typography>
-                      <Rating
-                        value={game.user_rating || 0}
-                        readOnly
-                        precision={0.5}
-                        size="small"
-                      />
-                    </Box>
-                  )}
+                  <Box display="flex" alignItems="center" mt={1}>
+                    <Typography component="legend">Your Rating:</Typography>
+                    <Rating value={game.user_rating || 0} readOnly />
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
           ))}
         </Grid>
-      )}
-  
-      {/* Logout button to log out the user */}
-      <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-        <Button variant="contained" color="primary" onClick={logoutUser}>
-          Logout
-        </Button>
+
+        <Box mt={4} display="flex" justifyContent="center">
+          <Button variant="contained" color="secondary" onClick={logoutUser}>
+            Logout
+          </Button>
+        </Box>
       </Box>
     </Container>
   );

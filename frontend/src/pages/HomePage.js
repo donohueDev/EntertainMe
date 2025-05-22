@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE_URL from '../config';
 import {
   Grid,
   Card,
@@ -14,8 +15,6 @@ import {
   Alert,
   Button
 } from '@mui/material';
-
-const API_BASE_URL = 'http://localhost:3001';
 
 const HomePage = () => {
   const [games, setGames] = useState([]);
@@ -128,6 +127,38 @@ const HomePage = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Header with logo and title */}
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          mb: 4 
+        }}
+      >
+        {/* Logo placeholder */}
+        <Box 
+          component="img" 
+          src="/logo-placeholder-image.png"
+          alt="Logo"
+          sx={{ width: 60, height: 60 }}
+        />
+  
+        {/* Title */}
+        <Typography 
+          variant="h4" 
+          sx={{ 
+            fontWeight: 'bold', 
+            textAlign: 'center', 
+            flexGrow: 1, 
+            color: 'white' 
+          }}
+        >
+          EntertainME
+        </Typography>
+      </Box>
+  
+      {/* Game Grid */}
       <Grid container spacing={3}>
         {games.map((game) => (
           <Grid item xs={12} sm={6} md={4} key={game.id}>
@@ -149,9 +180,7 @@ const HomePage = () => {
                 height="200"
                 image={game.background_image}
                 alt={game.name}
-                sx={{
-                  objectFit: 'cover'
-                }}
+                sx={{ objectFit: 'cover' }}
               />
               <CardContent>
                 <Typography 
@@ -172,7 +201,7 @@ const HomePage = () => {
         ))}
       </Grid>
     </Container>
-  );
+  );  
 };
 
 export default HomePage;

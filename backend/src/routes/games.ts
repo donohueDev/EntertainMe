@@ -196,4 +196,35 @@ router.get('/test', (_req: Request, res: Response) => {
   }
 });
 
+// GET game by ID
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    
+    if (isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid game ID' });
+    }
+
+    const sql = 'SELECT * FROM games WHERE id = $1';
+    
+    pool.query(sql, [id], (err: Error | null, result) => {
+      if (err) {
+        console.error('Error fetching game:', err);
+        res.status(500).json({ error: 'Database error' });
+        return;
+      }
+
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: 'Game not found' });
+        return;
+      }
+
+      res.json(result.rows[0]);
+    });
+  } catch (error) {
+    console.error('Error handling request:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router; 

@@ -1,6 +1,7 @@
 // src/components/Top100Games.js no longer needed, was used for a different API
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import API_BASE_URL from '../config';
 
 const Top100Games = () => {
   const [games, setGames] = useState([]);  // State to store top 100 games
@@ -11,7 +12,7 @@ const Top100Games = () => {
   useEffect(() => {
     const fetchTop100Games = async () => {
       try {
-        const response = await axios.post('http://localhost:3001/api/top100Games');
+        const response = await axios.post(`${API_BASE_URL}/api/top100Games`);
         setGames(response.data.top100Games);  // Set fetched games to state
         setLoading(false);  // Set loading to false once data is fetched
       } catch (err) {

@@ -1,9 +1,9 @@
-
 // RegisterPage component for user registration
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../context/userContext';
+import API_BASE_URL from '../config';
 import {
   Container,
   Box,
@@ -35,7 +35,7 @@ const RegisterPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:3001/api/accounts/register', {
+      const response = await axios.post(`${API_BASE_URL}/api/accounts/register`, {
         email,
         username,
         password,
@@ -100,6 +100,8 @@ const RegisterPage = () => {
           <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
               fullWidth
+              id="email"
+              name="email"
               label="Email"
               variant="outlined"
               value={email}
@@ -110,6 +112,8 @@ const RegisterPage = () => {
 
             <TextField
               fullWidth
+              id="username"
+              name="username"
               label="Username"
               variant="outlined"
               value={username}
@@ -119,6 +123,8 @@ const RegisterPage = () => {
 
             <TextField
               fullWidth
+              id="password"
+              name="password"
               label="Password"
               variant="outlined"
               type="password"

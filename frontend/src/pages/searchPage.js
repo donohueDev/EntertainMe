@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE_URL from '../config';
 import {
   Container,
   Box,
@@ -29,7 +30,7 @@ const SearchPage = () => {
     }
 
     try {
-      const response = await axios.get(`http://localhost:3001/api/games/search`, {
+      const response = await axios.get(`${API_BASE_URL}/api/games/search`, {
         params: { query: text },
       });
       setResults(response.data);

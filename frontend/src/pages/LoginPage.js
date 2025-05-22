@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../context/userContext';
+import API_BASE_URL from '../config';
 import {
   Container,
   Box,
@@ -28,7 +29,7 @@ const LoginPage = () => {
     setErrorMessage('');
 
     try {
-      const response = await axios.post('http://localhost:3001/api/accounts/login', {
+      const response = await axios.post(`${API_BASE_URL}/api/accounts/login`, {
         username,
         password,
       });
@@ -91,6 +92,8 @@ const LoginPage = () => {
           <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
               fullWidth
+              id="username"
+              name="username"
               label="Username"
               variant="outlined"
               value={username}
@@ -100,6 +103,8 @@ const LoginPage = () => {
 
             <TextField
               fullWidth
+              id="password"
+              name="password"
               label="Password"
               variant="outlined"
               type="password"
