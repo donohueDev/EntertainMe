@@ -30,7 +30,7 @@ services:
         value: https://entertainment-reviews-api.onrender.com
 
 databases:
-  - name: entertainmentDB
-    databaseName: entertainmentDB
-    user: entertainmentDB-user
+  - name: entertainment-db
+    databaseName: entertainment-db
+    user: entertainment-db-user
     plan: free 
