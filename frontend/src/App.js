@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline, AppBar, Toolbar, IconButton, Typography, Container, Box } from '@mui/material';
+import { CssBaseline, AppBar, Toolbar, IconButton, Typography, Container, Box, CircularProgress } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
@@ -120,22 +120,16 @@ const AppRoutes = () => {
 
 // Create a wrapper component to handle initialization
 const AppContent = () => {
-  const { updateUser } = useUser();
+  const { isInitializing } = useUser();
 
-  // Check localStorage on initial load
-  useEffect(() => {
-    const storedUserId = localStorage.getItem('userId');
-    const storedUsername = localStorage.getItem('username');
-    const storedLogin = localStorage.getItem('loggedIn');
-
-    if (storedLogin === 'true' && storedUserId && storedUsername) {
-      updateUser({
-        userId: storedUserId,
-        username: storedUsername,
-        isLoggedIn: 'true'
-      });
-    }
-  }, [updateUser]);
+  // Only show loading state while initializing
+  if (isInitializing) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Router>

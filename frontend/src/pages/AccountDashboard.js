@@ -19,6 +19,7 @@ import {
   CircularProgress,
   Grid
 } from '@mui/material';
+import Rating from '@mui/material/Rating';
 
 const AccountDashboard = () => {
   // useState used to declare and manage state variables which change with user interaction
@@ -117,7 +118,7 @@ const AccountDashboard = () => {
 
   // effect runs when user changes 
   useEffect(() => {
-    console.log("User information after logout:", user);
+    console.log("User information after change:", user);
   }, [user]);
 
   // use effect to run when status filter is changed or games list changes
@@ -212,9 +213,19 @@ const AccountDashboard = () => {
                   <Typography variant="body2" color="text.secondary">
                     Status: {game.user_status || 'N/A'}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Rating: {game.user_rating || 'N/A'}
-                  </Typography>
+                  {game.user_status !== 'planned' && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Rating:
+                      </Typography>
+                      <Rating
+                        value={game.user_rating || 0}
+                        readOnly
+                        precision={0.5}
+                        size="small"
+                      />
+                    </Box>
+                  )}
                 </CardContent>
               </Card>
             </Grid>

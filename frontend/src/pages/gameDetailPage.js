@@ -80,10 +80,6 @@ const GameDetailPage = () => {
       return;
     }
 
-    if (status === 'not played' || status === 'planned') {
-      setError('Status must be set to completed or playing before submitting your rating.');
-      return;
-    }
 
     setLoading(true);
     try {
@@ -181,14 +177,24 @@ const GameDetailPage = () => {
               {userGameData && (
                 <Box sx={{ mb: 4, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
                   <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
-                    Your Current Status:
+                    Current Status:
                   </Typography>
                   <Typography variant="body1" sx={{ color: 'white', mb: 1 }}>
                     Status: {userGameData.user_status || 'Not set'}
                   </Typography>
-                  <Typography variant="body1" sx={{ color: 'white' }}>
-                    Rating: {userGameData.user_rating ? `${userGameData.user_rating}/5` : 'Not rated'}
-                  </Typography>
+                  {userGameData.user_status !== 'planned' && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body1" sx={{ color: 'white' }}>
+                        Rating:
+                      </Typography>
+                      <Rating
+                        value={userGameData.user_rating || 0}
+                        readOnly
+                        precision={0.5}
+                        size="small"
+                      />
+                    </Box>
+                  )}
                 </Box>
               )}
 
@@ -211,16 +217,20 @@ const GameDetailPage = () => {
                   </Select>
                 </FormControl>
 
-                <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
-                  Rate this game:
-                </Typography>
-                <Rating
-                  value={rating}
-                  onChange={(event, newValue) => setRating(newValue)}
-                  precision={0.5}
-                  size="large"
-                  sx={{ mb: 3 }}
-                />
+                {status !== 'planned' && (
+                  <>
+                    <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
+                      Rate this game:
+                    </Typography>
+                    <Rating
+                      value={rating}
+                      onChange={(event, newValue) => setRating(newValue)}
+                      precision={0.5}
+                      size="large"
+                      sx={{ mb: 3 }}
+                    />
+                  </>
+                )}
 
                 <Button
                   variant="contained"
