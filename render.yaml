@@ -12,7 +12,7 @@ services:
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: entertainment-db
+          name: entertainmentdb
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
@@ -30,7 +30,7 @@ services:
         value: https://entertainment-reviews-api.onrender.com
 
 databases:
-  - name: entertainment-db
-    databaseName: entertainment-db
-    user: entertainment-db-user
+  - name: entertainmentdb
+    databaseName: entertainmentdb
+    user: entertainmentdb_user
     plan: free 
