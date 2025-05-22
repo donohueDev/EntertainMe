@@ -21,7 +21,6 @@ services:
   - type: web
     name: entertainmentME
     env: static
-    region: oregon
     plan: free
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/build
