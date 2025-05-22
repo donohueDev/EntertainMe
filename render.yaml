@@ -21,12 +21,12 @@ services:
   - type: web
     name: entertainmentME
     env: static
-    plan: free
     buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/build
-    envVars:
-      - key: REACT_APP_API_URL
-        value: https://entertainment-reviews-api.onrender.com
+    staticPublishPath: ./frontend/build
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
 
 databases:
   - name: entertainmentdb
