@@ -12,28 +12,48 @@ import top100GamesRouter from './routes/top100Games';
 // import protectedRoute from '../routes/protectedRoute';
 import initializeDatabase from './db/init';
 
-dotenv.config();
+dotenv.config({ path: '/Users/donohue/tempProject/.env' });
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
 // Configure CORS
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? 'https://entertainmentme.onrender.com'
-    : 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
+const allowedOrigins =
+  NODE_ENV === 'production'
+    ? ['https://entertainmentme.onrender.com', 'http://localhost:3000']
+    : ['http://localhost:3000'];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true); // allow non-browser requests
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  })
+);
 
 // Middleware
 app.use(express.json());
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err.stack);
+  console.error('Error details:', {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method
+  });
   res.status(500).json({
     message: 'Something went wrong!',
     error: NODE_ENV === 'development' ? err.message : 'Internal server error'
@@ -71,6 +91,13 @@ initializeDatabase()
     console.log('Database initialized successfully');
     app.listen(PORT, () => {
       console.log(`Server is running in ${NODE_ENV} mode on port ${PORT}`);
+      console.log('Environment variables loaded:', {
+        NODE_ENV,
+        PORT,
+        DB_HOST: process.env.DB_HOST,
+        DB_NAME: process.env.DB_NAME,
+        DB_USER: process.env.DB_USER
+      });
     });
   })
   .catch((error) => {

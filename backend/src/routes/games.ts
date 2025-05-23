@@ -94,29 +94,61 @@ const processGameData = async (game: Game): Promise<void> => {
 router.post('/rawg-games', async (_req: Request, res: Response) => {
   try {
     let page = 1;
-    const pageSize = 100;
+    const pageSize = 40; // RAWG API recommended page size
     let totalGamesInserted = 0;
-    const targetGames = 100;
+    const targetGames = 500; // Increased to 500 games
+    const maxRetries = 3;
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     while (totalGamesInserted < targetGames) {
-      const { data } = await axios.get<{ results: Game[] }>('https://api.rawg.io/api/games', {
-        params: { key: process.env.RAWG_API_KEY, page, page_size: pageSize },
-      });
+      let retryCount = 0;
+      let success = false;
 
-      const games = data.results;
-      if (!games.length) break;
-
-      // Process games sequentially
-      for (const game of games) {
-        if (totalGamesInserted >= targetGames) break;
-        
+      while (retryCount < maxRetries && !success) {
         try {
-          await processGameData(game);
-          totalGamesInserted++;
-          console.log(`Inserted ${totalGamesInserted} games so far.`);
-        } catch (err) {
-          console.error(`Failed to insert game ${game.id}:`, err instanceof Error ? err.message : 'Unknown error');
+          const { data } = await axios.get<{ results: Game[] }>('https://api.rawg.io/api/games', {
+            params: { 
+              key: process.env.RAWG_API_KEY, 
+              page, 
+              page_size: pageSize,
+              ordering: '-rating', // Get highest rated games first
+              exclude_parents: true // Exclude explicit content
+            },
+          });
+
+          const games = data.results;
+          if (!games.length) {
+            console.log('No more games to fetch');
+            break;
+          }
+
+          // Process games sequentially with delay between each
+          for (const game of games) {
+            if (totalGamesInserted >= targetGames) break;
+            
+            try {
+              await processGameData(game);
+              totalGamesInserted++;
+              console.log(`Inserted ${totalGamesInserted} games so far.`);
+              await delay(100); // Add small delay between processing each game
+            } catch (err) {
+              console.error(`Failed to insert game ${game.id}:`, err instanceof Error ? err.message : 'Unknown error');
+            }
+          }
+
+          success = true;
+        } catch (error) {
+          retryCount++;
+          console.error(`Attempt ${retryCount} failed:`, error);
+          if (retryCount < maxRetries) {
+            await delay(1000 * retryCount); // Exponential backoff
+          }
         }
+      }
+
+      if (!success) {
+        console.error(`Failed to fetch games after ${maxRetries} attempts`);
+        break;
       }
 
       if (totalGamesInserted >= targetGames) {
@@ -124,12 +156,19 @@ router.post('/rawg-games', async (_req: Request, res: Response) => {
       }
 
       page++;
+      await delay(1000); // Add delay between pages to respect rate limits
     }
 
-    res.status(200).json({ message: `Successfully inserted ${totalGamesInserted} games!` });
+    res.status(200).json({ 
+      message: `Successfully inserted ${totalGamesInserted} games!`,
+      totalGames: totalGamesInserted
+    });
   } catch (error) {
     console.error('Error fetching or inserting games:', error);
-    res.status(500).json({ error: 'Failed to fetch games' });
+    res.status(500).json({ 
+      error: 'Failed to fetch games',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 

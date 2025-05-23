@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import API_BASE_URL from '../config';
 import {
-  Grid,
   Card,
   CardMedia,
   CardContent,

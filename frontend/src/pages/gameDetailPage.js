@@ -93,7 +93,7 @@ const GameDetailPage = () => {
         rating: Math.round(rating),
         status,
       });
-
+      console.log("Post review response: ", response);
       setUserGameData({
         ...userGameData,
         user_rating: Math.round(rating),
