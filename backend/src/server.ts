@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import RAWGGamesRouter from './routes/games';
 import { accountRouter } from './routes/accounts';
 import userGamesRoute from './routes/userGames';
@@ -12,8 +13,8 @@ import top100GamesRouter from './routes/top100Games';
 // import protectedRoute from '../routes/protectedRoute';
 import initializeDatabase from './db/init';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from root directory
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5001;

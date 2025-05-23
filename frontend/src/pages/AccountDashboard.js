@@ -67,7 +67,9 @@ const AccountDashboard = () => {
     if (selectedStatus === 'all') {
       setFilteredGames(games);
     } else {
-      const filtered = games.filter(game => game.user_status === selectedStatus);
+      const filtered = games.filter(game => 
+        game.user_status?.toLowerCase() === selectedStatus.toLowerCase()
+      );
       setFilteredGames(filtered);
     }
   };
@@ -139,10 +141,10 @@ const AccountDashboard = () => {
                 label="Filter by Status"
               >
                 <MenuItem value="all">All Games</MenuItem>
-                <MenuItem value="planned">Planned</MenuItem>
-                <MenuItem value="playing">Currently Playing</MenuItem>
-                <MenuItem value="completed">Completed</MenuItem>
-                <MenuItem value="dropped">Dropped</MenuItem>
+                <MenuItem value="planned" disabled={statusFilter === 'planned'}>Planned</MenuItem>
+                <MenuItem value="playing" disabled={statusFilter === 'playing'}>Currently Playing</MenuItem>
+                <MenuItem value="completed" disabled={statusFilter === 'completed'}>Completed</MenuItem>
+                <MenuItem value="dropped" disabled={statusFilter === 'dropped'}>Dropped</MenuItem>
               </Select>
             </FormControl>
           </Box>
@@ -192,10 +194,10 @@ const AccountDashboard = () => {
               label="Filter by Status"
             >
               <MenuItem value="all">All Games</MenuItem>
-              <MenuItem value="Planned">Planned</MenuItem>
-              <MenuItem value="playing">Currently Playing</MenuItem>
-              <MenuItem value="completed">Completed</MenuItem>
-              <MenuItem value="dropped">Dropped</MenuItem>
+              <MenuItem value="planned" disabled={statusFilter === 'planned'}>Planned</MenuItem>
+              <MenuItem value="playing" disabled={statusFilter === 'playing'}>Currently Playing</MenuItem>
+              <MenuItem value="completed" disabled={statusFilter === 'completed'}>Completed</MenuItem>
+              <MenuItem value="dropped" disabled={statusFilter === 'dropped'}>Dropped</MenuItem>
             </Select>
           </FormControl>
         </Box>
@@ -207,6 +209,9 @@ const AccountDashboard = () => {
                 sx={{ 
                   cursor: 'pointer',
                   transition: 'transform 0.2s',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
                   '&:hover': {
                     transform: 'scale(1.02)'
                   }
@@ -219,17 +224,19 @@ const AccountDashboard = () => {
                   image={game.background_image || 'https://via.placeholder.com/140'}
                   alt={game.name}
                 />
-                <CardContent>
+                <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                   <Typography gutterBottom variant="h6" component="div">
                     {game.name}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Status: {game.user_status || 'Not played'}
                   </Typography>
-                  <Box display="flex" alignItems="center" mt={1}>
-                    <Typography component="legend">Your Rating:</Typography>
-                    <Rating value={game.user_rating || 0} readOnly />
-                  </Box>
+                  {game.user_status?.toLowerCase() !== 'planned' && (
+                    <Box display="flex" alignItems="center" mt={1}>
+                      <Typography component="legend">Your Rating:</Typography>
+                      <Rating value={game.user_rating || 0} readOnly />
+                    </Box>
+                  )}
                 </CardContent>
               </Card>
             </Grid>

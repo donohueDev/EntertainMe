@@ -29,7 +29,7 @@ const GameDetailPage = () => {
   const location = useLocation();
   const game = location.state?.game;
   const [rating, setRating] = useState(0);
-  const [status, setStatus] = useState('not played');
+  const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -63,7 +63,7 @@ const GameDetailPage = () => {
           if (response.data) {
             setUserGameData(response.data);
             setRating(response.data.user_rating || 0);
-            setStatus(response.data.user_status || 'not played');
+            setStatus(response.data.user_status || '');
           }
         } catch (error) {
           console.error('Error fetching user game data:', error);
