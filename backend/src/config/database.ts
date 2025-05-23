@@ -1,7 +1,7 @@
 import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: '/Users/donohue/tempProject/.env' });
+dotenv.config({ path: '/Users/donohue/EntertainMe/.env' });
 
 // Debug environment variables
 console.log('Database Configuration:', {
