@@ -22,7 +22,7 @@ const RegisterPage = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { updateUser } = useUser();
+  const { login } = useUser();
 
   const handleRegister = async () => {
     console.log("Register button pressed, making API call...");
@@ -43,21 +43,20 @@ const RegisterPage = () => {
 
       console.log('Registration response:', response.data);
 
-      if (response.data && response.data.userId && response.data.username) {
-        // Update the user context with the registered user data
-        updateUser({
-          userId: response.data.userId,
-          username: response.data.username,
-          isLoggedIn: 'true'
-        });
+      if (response.data && response.data.token) {
+        // Store the token and update auth state
+        login(response.data.token);
+        
+        // Clear the input fields
+        setEmail('');
+        setUsername('');
+        setPassword('');
 
-        // Store user data in localStorage for persistence
-        localStorage.setItem('userId', response.data.userId.toString());
-        localStorage.setItem('username', response.data.username);
-        localStorage.setItem('loggedIn', 'true');
-
-        // Navigate to home screen after successful registration
-        navigate('/');
+        // Add a small delay to ensure state is updated
+        setTimeout(() => {
+          // Navigate to the Account Dashboard
+          navigate('/account/dashboard', { replace: true });
+        }, 100);
       } else {
         setErrorMessage('Registration failed. Please try again.');
       }

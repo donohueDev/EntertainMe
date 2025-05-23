@@ -58,8 +58,16 @@ router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Resp
 
     const userId = result.rows[0].id;
 
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: userId, username: username },
+      process.env.JWT_SECRET!,
+      { expiresIn: '1h' }
+    );
+
     return res.status(201).json({
       message: 'User registered successfully',
+      token,
       userId: userId,
       username: username,
       email: email
