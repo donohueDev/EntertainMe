@@ -12,7 +12,8 @@ import top100GamesRouter from './routes/top100Games';
 // import protectedRoute from '../routes/protectedRoute';
 import initializeDatabase from './db/init';
 
-dotenv.config({ path: '/Users/donohue/EntertainMe/.env' });
+// Load environment variables
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5001;

@@ -1,34 +1,55 @@
 import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: '/Users/donohue/EntertainMe/.env' });
+// Load environment variables
+dotenv.config();
 
-// Debug environment variables
+// Parse DATABASE_URL if it exists (for production)
+let dbConfig;
+if (process.env.DATABASE_URL) {
+  // Parse the DATABASE_URL
+  const url = new URL(process.env.DATABASE_URL);
+  dbConfig = {
+    user: url.username,
+    password: url.password,
+    host: url.hostname,
+    port: parseInt(url.port),
+    database: url.pathname.substring(1),
+    ssl: {
+      rejectUnauthorized: false // Required for Render's PostgreSQL
+    }
+  };
+} else {
+  // Local development configuration
+  dbConfig = {
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: parseInt(process.env.DB_PORT || '5432'),
+  };
+}
+
+// Debug environment variables (without sensitive data)
 console.log('Database Configuration:', {
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD ? '****' : undefined,
-  port: process.env.DB_PORT
+  user: dbConfig.user,
+  host: dbConfig.host,
+  database: dbConfig.database,
+  port: dbConfig.port,
+  ssl: dbConfig.ssl ? 'enabled' : 'disabled'
 });
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: parseInt(process.env.DB_PORT || '5432'),
-});
+const pool = new Pool(dbConfig);
 
 // Test the connection
 pool.connect((err: Error | undefined, client: PoolClient | undefined, done: (release?: any) => void) => {
   if (err) {
     console.error('Error connecting to the database:', err);
     console.error('Connection details:', {
-      user: process.env.DB_USER,
-      host: process.env.DB_HOST,
-      database: process.env.DB_NAME,
-      port: process.env.DB_PORT
+      user: dbConfig.user,
+      host: dbConfig.host,
+      database: dbConfig.database,
+      port: dbConfig.port
     });
     return;
   }
