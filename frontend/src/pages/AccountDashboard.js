@@ -250,7 +250,7 @@ const AccountDashboard = () => {
         </Box>
       </Box>
     </Container>
-  );
+  )
 };
 
 export default AccountDashboard;

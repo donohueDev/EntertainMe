@@ -29,7 +29,13 @@ app.use((req, res, next) => {
 // Configure CORS
 const allowedOrigins =
   NODE_ENV === 'production'
-    ? ['https://entertainmentme.onrender.com', 'http://localhost:3000']
+    ? [
+        'https://entertainmentme.onrender.com',
+        'http://localhost:3000',
+        'https://entertain-me-chi.vercel.app',
+        'https://www.entertainme.pro',
+        'https://entertainme.pro'
+      ]
     : ['http://localhost:3000'];
 
 app.use(

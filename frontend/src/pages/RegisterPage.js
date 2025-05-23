@@ -1,5 +1,6 @@
 // RegisterPage component for user registration
 import React, { useState } from 'react';
+import validator from 'validator';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../context/userContext';
@@ -32,6 +33,21 @@ const RegisterPage = () => {
       return;
     }
 
+    if(!validator.isEmail(email)){
+      setErrorMessage("Please enter a valid email.");
+      return;
+    }
+
+    if(!validator.isAlphanumeric(username) || username.length < 3){
+      setErrorMessage("Please enter a valid username.");
+      return;
+    }
+
+    if(password.length < 6){
+      setErrorMessage("Please enter a valid password.");
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
@@ -107,6 +123,7 @@ const RegisterPage = () => {
               onChange={(e) => setEmail(e.target.value)}
               type="email"
               required
+              helperText="Enter a valid email address"
             />
 
             <TextField
@@ -118,6 +135,7 @@ const RegisterPage = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              helperText="3+ characters, letters and numbers only"
             />
 
             <TextField
@@ -130,6 +148,7 @@ const RegisterPage = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              helperText="Minimum 6 characters"
             />
 
             {errorMessage && (
