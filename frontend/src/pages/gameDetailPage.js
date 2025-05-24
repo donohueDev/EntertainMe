@@ -22,7 +22,6 @@ import {
   Rating,
   Snackbar
 } from '@mui/material';
-// need to add logic to reset starRating and dropdown item list on navigation to page
 
 // GameDetailPage component for displaying detailed game information
 const GameDetailPage = () => {

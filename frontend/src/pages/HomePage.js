@@ -1,5 +1,5 @@
 // Import necessary libraries and modules
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import API_BASE_URL from '../config';
@@ -12,14 +12,29 @@ import {
   Box,
   CircularProgress,
   Alert,
-  Button
+  Button,
+  IconButton
 } from '@mui/material';
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 
 const HomePage = () => {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const scrollContainerRef = useRef(null);
+
+  const handleScroll = (direction) => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 400; // Adjust this value based on your needs
+      const newScrollPosition = scrollContainerRef.current.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount);
+      scrollContainerRef.current.scrollTo({
+        left: newScrollPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -169,78 +184,121 @@ const HomePage = () => {
         >
           Top 100 Games
         </Typography>
-      {/* Horizontal scroll container with 2 rows */}
-      <Box
-  sx={{
-    display: 'grid',
-    gridAutoFlow: 'column',
-    gridTemplateRows: 'repeat(2, 1fr)',
-    overflowX: 'auto',
-    overflowY: 'hidden',
-    gap: 3,
-    py: 1,
-    '&::-webkit-scrollbar': { height: 8 },
-    '&::-webkit-scrollbar-thumb': { background: '#888', borderRadius: 4 },
-    height: 400,
-  }}
->
-  {games.map((game) => (
-    <Card
-      key={game.id}
-      sx={{
-        width: 200,
-        height: 180,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between', // Spread out children
-        cursor: 'pointer',
-        boxSizing: 'border-box',
-        '&:hover': {
-          transform: 'scale(1.03)',
-          transition: 'transform 0.2s',
-        },
-        backgroundColor: '#1c1c1c',
-      }}
-      onClick={() => navigate(`/game/${game.id}`, { state: { game } })}
-    >
-      <CardMedia
-        component="img"
-        height="130"
-        image={game.background_image}
-        alt={game.name}
-        sx={{ objectFit: 'cover' }}
-      />
-<CardContent
-  sx={{
-    height: 30,
-    display: 'flex',
-    alignItems: 'center',       // Vertically center the content
-    justifyContent: 'center',   // Horizontally center the text
-    textAlign: 'center',        // Center text inside the Typography
-  }}
->
-  <Typography
-    variant="h8"
-    component="div"
-    sx={{
-      fontWeight: 'bold',
-      fontFamily: 'sans-serif',
-      color: 'white',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      display: '-webkit-box',
-      WebkitLineClamp: 2,       // Allows wrapping to 2 lines
-      WebkitBoxOrient: 'vertical',
-    }}
-  >
-    {game.name}
-  </Typography>
-</CardContent>
 
-    </Card>
-  ))}
-</Box>
+      {/* Games container with navigation arrows */}
+      <Box sx={{ position: 'relative', width: '100%' }}>
+        {/* Left arrow */}
+        <IconButton
+          onClick={() => handleScroll('left')}
+          sx={{
+            position: 'absolute',
+            left: -20,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 2,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            '&:hover': {
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            },
+            color: 'white',
+          }}
+        >
+          <ArrowBackIosNewIcon />
+        </IconButton>
 
+        {/* Right arrow */}
+        <IconButton
+          onClick={() => handleScroll('right')}
+          sx={{
+            position: 'absolute',
+            right: -20,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 2,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            '&:hover': {
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            },
+            color: 'white',
+          }}
+        >
+          <ArrowForwardIosIcon />
+        </IconButton>
+
+        {/* Scroll container */}
+        <Box
+          ref={scrollContainerRef}
+          sx={{
+            display: 'grid',
+            gridAutoFlow: 'column',
+            gridTemplateRows: 'repeat(2, 1fr)',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            gap: 3,
+            py: 1,
+            px: 2,
+            '&::-webkit-scrollbar': { height: 8 },
+            '&::-webkit-scrollbar-thumb': { background: '#888', borderRadius: 4 },
+            height: 400,
+            scrollBehavior: 'smooth',
+          }}
+        >
+          {games.map((game) => (
+            <Card
+              key={game.id}
+              sx={{
+                width: 200,
+                height: 180,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between', // Spread out children
+                cursor: 'pointer',
+                boxSizing: 'border-box',
+                '&:hover': {
+                  transform: 'scale(1.03)',
+                  transition: 'transform 0.2s',
+                },
+                backgroundColor: '#1c1c1c',
+              }}
+              onClick={() => navigate(`/game/${game.id}`, { state: { game } })}
+            >
+              <CardMedia
+                component="img"
+                height="130"
+                image={game.background_image}
+                alt={game.name}
+                sx={{ objectFit: 'cover' }}
+              />
+              <CardContent
+                sx={{
+                  height: 30,
+                  display: 'flex',
+                  alignItems: 'center',       // Vertically center the content
+                  justifyContent: 'center',   // Horizontally center the text
+                  textAlign: 'center',        // Center text inside the Typography
+                }}
+              >
+                <Typography
+                  variant="h8"
+                  component="div"
+                  sx={{
+                    fontWeight: 'bold',
+                    fontFamily: 'sans-serif',
+                    color: 'white',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,       // Allows wrapping to 2 lines
+                    WebkitBoxOrient: 'vertical',
+                  }}
+                >
+                  {game.name}
+                </Typography>
+              </CardContent>
+            </Card>
+          ))}
+        </Box>
+      </Box>
     </Container>
   );  
 };
