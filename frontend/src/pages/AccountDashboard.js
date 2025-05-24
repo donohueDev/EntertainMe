@@ -115,7 +115,7 @@ const AccountDashboard = () => {
           <Typography variant="h5" gutterBottom>
             Please log in to view your account
           </Typography>
-          <Button variant="contained" color="primary" onClick={() => navigate('/account')}>
+          <Button variant="contained" color="primary" onClick={() => navigate('/auth/login')}>
             Login
           </Button>
         </Box>

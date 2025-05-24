@@ -273,7 +273,7 @@ const GameDetailPage = () => {
                 <Button
                   variant="contained"
                   color="primary"
-                  onClick={() => navigate('/account')}
+                  onClick={() => navigate('/auth/login')}
                   sx={{ flex: 1 }}
                 >
                   Log In
@@ -281,7 +281,7 @@ const GameDetailPage = () => {
                 <Button
                   variant="outlined"
                   color="primary"
-                  onClick={() => navigate('/register')}
+                  onClick={() => navigate('/auth/register')}
                   sx={{ flex: 1 }}
                 >
                   Create Account

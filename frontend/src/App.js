@@ -68,7 +68,7 @@ const Navigation = () => {
 
   const handleAccountClick = () => {
     if (!isAuthenticated) {
-      navigate('/account', { replace: true });
+      navigate('/auth/login', { replace: true });
     } else {
       const userInfo = getUserInfo();
       navigate(`/user/${userInfo.username}/dashboard`, { replace: true });
@@ -100,8 +100,8 @@ const AppRoutes = () => {
       <Route path="/" element={<HomePage />} />
       <Route path="/game/:id" element={<GameDetailPage />} />
       <Route path="/search" element={<SearchPage />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/account" element={<LoginPage />} />
+      <Route path="/auth/register" element={<Register />} />
+      <Route path="/auth/login" element={<LoginPage />} />
       <Route 
         path="/user/:username/dashboard" 
         element={

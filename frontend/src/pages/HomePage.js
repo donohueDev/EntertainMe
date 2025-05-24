@@ -27,9 +27,15 @@ const HomePage = () => {
 
   const handleScroll = (direction) => {
     if (scrollContainerRef.current) {
-      const scrollAmount = 400; // Adjust this value based on your needs
-      const newScrollPosition = scrollContainerRef.current.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount);
-      scrollContainerRef.current.scrollTo({
+      const container = scrollContainerRef.current;
+      const cardWidth = 200; 
+      const cardGap = 24; 
+      const containerWidth = container.clientWidth;
+      const cardsPerView = Math.floor((containerWidth + cardGap) / (cardWidth + cardGap));
+      const scrollAmount = (cardWidth + cardGap) * cardsPerView;
+      
+      const newScrollPosition = container.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount);
+      container.scrollTo({
         left: newScrollPosition,
         behavior: 'smooth'
       });
@@ -89,7 +95,7 @@ const HomePage = () => {
       setError('Failed to load games. Please try again later.');
     }
   };
-
+  // loading symbol
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
@@ -98,6 +104,7 @@ const HomePage = () => {
     );
   }
 
+  // if error getting games print to screen, let user load games into DB
   if (error) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -139,6 +146,7 @@ const HomePage = () => {
     );
   }
 
+  // Home page layout
   return (
     <Container maxWidth="lg" sx={{ 
       py: 4,

@@ -138,7 +138,7 @@ const LoginPage = () => {
               <Link
                 component="button"
                 variant="body2"
-                onClick={() => navigate('/register')}
+                onClick={() => navigate('/auth/register')}
                 sx={{ textDecoration: 'none' }}
               >
                 Don't have an account? Register here
