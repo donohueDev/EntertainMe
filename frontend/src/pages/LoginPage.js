@@ -47,8 +47,9 @@ const LoginPage = () => {
 
         // Add a small delay to ensure state is updated
         setTimeout(() => {
-          // Navigate to the Account Dashboard
-          navigate('/account/dashboard', { replace: true });
+          // Navigate to the Account Dashboard with username
+          const userInfo = JSON.parse(atob(response.data.token.split('.')[1]));
+          navigate(`/user/${userInfo.username}/dashboard`, { replace: true });
         }, 100);
       } else {
         setErrorMessage('Login failed. Please check your credentials.');

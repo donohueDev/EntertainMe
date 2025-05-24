@@ -63,14 +63,15 @@ const ProtectedRoute = ({ children }) => {
 
 // Navigation component
 const Navigation = () => {
-  const { isAuthenticated } = useUser();
+  const { isAuthenticated, getUserInfo } = useUser();
   const navigate = useNavigate();
 
   const handleAccountClick = () => {
     if (!isAuthenticated) {
       navigate('/account', { replace: true });
     } else {
-      navigate('/account/dashboard', { replace: true });
+      const userInfo = getUserInfo();
+      navigate(`/user/${userInfo.username}/dashboard`, { replace: true });
     }
   };
 
@@ -102,7 +103,7 @@ const AppRoutes = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/account" element={<LoginPage />} />
       <Route 
-        path="/account/dashboard" 
+        path="/user/:username/dashboard" 
         element={
           <ProtectedRoute>
             <AccountDashboard />

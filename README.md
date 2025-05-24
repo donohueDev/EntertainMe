@@ -6,6 +6,8 @@
 
 ## 🌐 Live Demo
 
+**Check out the website [here](https://www.entertainme.pro)!**
+
 > _Coming Soon!_ (Deployment will be handled using Docker & AWS)
 
 ---
@@ -33,13 +35,19 @@
 
 ## 🗂 Features
 
-- ✅ User authentication & profile management
-- 🎮 Track all types of media: **games** (**movies**, **shows**, and **anime** to be added later)
-- 📝 Leave reviews, ratings, and personal notes 
-- 📊 Visual dashboards (upcoming)
+- ✅ User authentication
+- 🎮 Track **games**
+- 📝 Leave Ratings
+- 📊 Visual user dashboard
 - 🔍 Filter & search functionality
 - 📌 "To Watch/Play" list and "Completed" list
 - 📱 Fully responsive design
+
+## Planned Features 
+- Profile management (password reset, username change, email change)
+- Leave reviews/notes
+- More content (**movies**, **shows**, and **anime** to be added later)
+- Video previews of selected title
 
 ---
 

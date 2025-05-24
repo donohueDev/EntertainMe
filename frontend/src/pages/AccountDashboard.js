@@ -1,6 +1,6 @@
 // accountDashboard.js is used to display reviewed games to user
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../context/userContext';
 import API_BASE_URL from '../config';
@@ -29,6 +29,7 @@ const AccountDashboard = () => {
   const [filteredGames, setFilteredGames] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
+  const { username } = useParams();
   const { isAuthenticated, getUserInfo, logout } = useUser();
 
   // Fetch user's games when component mounts
@@ -45,6 +46,11 @@ const AccountDashboard = () => {
           throw new Error('User information not found');
         }
 
+        // Verify that the username in URL matches the logged-in user
+        if (userInfo.username !== username) {
+          throw new Error('Unauthorized access');
+        }
+
         const response = await axios.get(`${API_BASE_URL}/api/userGames/${userInfo.userId}/games`);
         setGames(response.data);
         setFilteredGames(response.data);
@@ -57,7 +63,7 @@ const AccountDashboard = () => {
     };
 
     fetchUserGames();
-  }, [isAuthenticated, getUserInfo]);
+  }, [isAuthenticated, getUserInfo, username]);
 
   // Filter games based on status
   const handleStatusFilterChange = (event) => {
