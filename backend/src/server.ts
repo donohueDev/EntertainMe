@@ -84,6 +84,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', environment: NODE_ENV });
 });
 
+// Ping route to keep service alive
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
 // Basic route
 app.get('/', (req, res) => {
   res.json({ 
