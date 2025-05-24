@@ -23,8 +23,17 @@ const darkTheme = createTheme({
       main: '#ffffff',
     },
     background: {
-      default: '#121212',
-      paper: '#1e1e1e',
+      default: '#0A1929',
+      paper: '#1A1A1A',
+    },
+  },
+  components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: {
+          backgroundColor: '#0A1929',
+        },
+      },
     },
   },
 });

@@ -140,7 +140,12 @@ const HomePage = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ 
+      py: 4,
+      backgroundColor: '#0A1929', // Dark blue background
+      minHeight: '100vh',
+      color: '#E0E0E0' // Light gray text
+    }}>
       {/* Header with logo and title */}
       <Box 
         sx={{ 
@@ -165,7 +170,7 @@ const HomePage = () => {
             fontWeight: 'bold', 
             textAlign: 'center', 
             flexGrow: 1, 
-            color: 'white' 
+            color: '#E0E0E0' // Light gray
           }}
         >
           EntertainME
@@ -179,50 +184,29 @@ const HomePage = () => {
             fontFamily: 'Varela Round',
             textAlign: 'left', 
             flexGrow: 1, 
-            color: 'white' 
+            color: '#E0E0E0' // Light gray
           }}
         >
           Top 100 Games
         </Typography>
 
       {/* Games container with navigation arrows */}
-      <Box sx={{ position: 'relative', width: '100%' }}>
+      <Box sx={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center', gap: 2 }}>
         {/* Left arrow */}
         <IconButton
           onClick={() => handleScroll('left')}
           sx={{
-            position: 'absolute',
-            left: -20,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            zIndex: 2,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: '#042454',
             '&:hover': {
-              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              backgroundColor: '#374265',
             },
             color: 'white',
+            width: 40,
+            height: 40,
+            flexShrink: 0,
           }}
         >
           <ArrowBackIosNewIcon />
-        </IconButton>
-
-        {/* Right arrow */}
-        <IconButton
-          onClick={() => handleScroll('right')}
-          sx={{
-            position: 'absolute',
-            right: -20,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            zIndex: 2,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            '&:hover': {
-              backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            },
-            color: 'white',
-          }}
-        >
-          <ArrowForwardIosIcon />
         </IconButton>
 
         {/* Scroll container */}
@@ -237,10 +221,14 @@ const HomePage = () => {
             gap: 3,
             py: 1,
             px: 2,
-            '&::-webkit-scrollbar': { height: 8 },
-            '&::-webkit-scrollbar-thumb': { background: '#888', borderRadius: 4 },
+            '&::-webkit-scrollbar': { 
+              display: 'none'  // Hide scrollbar for Chrome, Safari and Opera
+            },
+            scrollbarWidth: 'none',  // Hide scrollbar for Firefox
+            msOverflowStyle: 'none',  // Hide scrollbar for IE and Edge
             height: 400,
             scrollBehavior: 'smooth',
+            flexGrow: 1,
           }}
         >
           {games.map((game) => (
@@ -251,14 +239,16 @@ const HomePage = () => {
                 height: 180,
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between', // Spread out children
+                justifyContent: 'space-between',
                 cursor: 'pointer',
                 boxSizing: 'border-box',
                 '&:hover': {
                   transform: 'scale(1.03)',
                   transition: 'transform 0.2s',
+                  boxShadow: '0 0 15px rgba(224, 224, 224, 0.2)', // Light gray glow
                 },
-                backgroundColor: '#1c1c1c',
+                backgroundColor: '#1A1A1A', // Darker gray for cards
+                border: '1px solid #424242', // Medium gray border
               }}
               onClick={() => navigate(`/game/${game.id}`, { state: { game } })}
             >
@@ -284,7 +274,7 @@ const HomePage = () => {
                   sx={{
                     fontWeight: 'bold',
                     fontFamily: 'sans-serif',
-                    color: 'white',
+                    color: '#E0E0E0', // Light gray text
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     display: '-webkit-box',
@@ -298,6 +288,23 @@ const HomePage = () => {
             </Card>
           ))}
         </Box>
+
+        {/* Right arrow */}
+        <IconButton
+          onClick={() => handleScroll('right')}
+          sx={{
+            backgroundColor: '#042454',
+            '&:hover': {
+              backgroundColor: '#374265',
+            },
+            color: 'white',
+            width: 40,
+            height: 40,
+            flexShrink: 0,
+          }}
+        >
+          <ArrowForwardIosIcon />
+        </IconButton>
       </Box>
     </Container>
   );  
