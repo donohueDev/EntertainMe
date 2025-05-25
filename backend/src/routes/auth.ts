@@ -5,6 +5,12 @@ import pool from '../config/database';
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Ensure JWT_SECRET exists
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET is not defined in environment variables');
+}
+
 interface User {
   id: number;
   email: string;
@@ -37,13 +43,13 @@ router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Resp
 
   try {
     // Check if the username already exists
-    const existingUser = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    const existingUser = await pool.query<User>('SELECT * FROM users WHERE username = $1', [username]);
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ message: 'Username already taken. Please choose a different username.' });
     }
 
     // Check if the email already exists
-    const existingEmail = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const existingEmail = await pool.query<User>('SELECT * FROM users WHERE email = $1', [email]);
     if (existingEmail.rows.length > 0) {
       return res.status(400).json({ message: 'Email already registered. Please use a different email.' });
     }
@@ -51,26 +57,26 @@ router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Resp
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     // Insert the new user into the database
-    const result = await pool.query(
-      'INSERT INTO users (email, username, password) VALUES ($1, $2, $3) RETURNING id',
+    const result = await pool.query<User>(
+      'INSERT INTO users (email, username, password) VALUES ($1, $2, $3) RETURNING id, email, username',
       [email, username, hashedPassword]
     );
 
-    const userId = result.rows[0].id;
+    const newUser = result.rows[0];
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: userId, username: username },
-      process.env.JWT_SECRET!,
+      { userId: newUser.id, username: newUser.username },
+      JWT_SECRET,
       { expiresIn: '1h' }
     );
 
     return res.status(201).json({
       message: 'User registered successfully',
       token,
-      userId: userId,
-      username: username,
-      email: email
+      userId: newUser.id,
+      username: newUser.username,
+      email: newUser.email
     });
 
   } catch (error) {
@@ -86,7 +92,7 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) 
 
   try {
     // Check if user exists by username OR email
-    const result = await pool.query(
+    const result = await pool.query<User>(
       'SELECT * FROM users WHERE username = $1 OR email = $1',
       [username]
     );
@@ -100,16 +106,18 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(400).json({ message: 'Invalid credentials' });
-    }else {
+    } else {
       console.log("Password is valid");
     }
+
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, username: user.username },
-      process.env.JWT_SECRET!,
+      JWT_SECRET,
       { expiresIn: '1h' }
     );
     console.log("Token generated:", token);
+    
     // Send the token in the response
     return res.json({
       token,
@@ -123,7 +131,6 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) 
   }
 });
 
-
 // Protected route to get the current user's data
 router.get('/me', (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
@@ -136,7 +143,7 @@ router.get('/me', (req: Request, res: Response) => {
   console.log("Token received:", token);
   
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
+    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
     console.log("returned: ", decoded.userId);
     return res.json({ userId: decoded.userId, username: decoded.username });
   } catch (error) {

@@ -45,14 +45,6 @@ export const register = async (userData) => {
 // };
 
 
-// Store the JWT token in localStorage
-const storeToken = (token) => {
-  try {
-    localStorage.setItem('userToken', token);
-  } catch (error) {
-    console.error('Error storing token', error);
-  }
-};
 
 // logout function
 export const logout = async () => {

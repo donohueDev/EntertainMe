@@ -11,6 +11,7 @@ const UserContext = createContext();
 export const UserProvider = ({ children }) => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
 
   useEffect(() => {
     const initializeAuth = () => {
@@ -19,13 +20,29 @@ export const UserProvider = ({ children }) => {
         if (token) {
           // Verify token is valid by attempting to decode it
           const decoded = jwtDecode(token);
-          setIsAuthenticated(true);
+          
+          // Check if token is expired
+          const currentTime = Date.now() / 1000;
+          if (decoded.exp < currentTime) {
+            console.log('Token expired');
+            localStorage.removeItem('token');
+            setIsAuthenticated(false);
+            setUserInfo(null);
+          } else {
+            setIsAuthenticated(true);
+            setUserInfo({
+              userId: decoded.userId,
+              username: decoded.username
+            });
+          }
         } else {
           setIsAuthenticated(false);
+          setUserInfo(null);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
         setIsAuthenticated(false);
+        setUserInfo(null);
         localStorage.removeItem('token');
       } finally {
         setIsInitializing(false);
@@ -36,20 +53,37 @@ export const UserProvider = ({ children }) => {
   }, []);
 
   const login = (token) => {
-    localStorage.setItem('token', token);
-    setIsAuthenticated(true);
+    try {
+      const decoded = jwtDecode(token);
+      localStorage.setItem('token', token);
+      setIsAuthenticated(true);
+      setUserInfo({
+        userId: decoded.userId,
+        username: decoded.username
+      });
+    } catch (error) {
+      console.error('Error during login:', error);
+      localStorage.removeItem('token');
+      setIsAuthenticated(false);
+      setUserInfo(null);
+    }
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     setIsAuthenticated(false);
+    setUserInfo(null);
   };
 
   const getUserInfo = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return null;
-      return jwtDecode(token);
+      const decoded = jwtDecode(token);
+      return {
+        userId: decoded.userId,
+        username: decoded.username
+      };
     } catch (error) {
       console.error('Error getting user info:', error);
       return null;
@@ -61,6 +95,7 @@ export const UserProvider = ({ children }) => {
     <UserContext.Provider value={{ 
       isAuthenticated, 
       isInitializing,
+      userInfo,
       login,
       logout,
       getUserInfo
