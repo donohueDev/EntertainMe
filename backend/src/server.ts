@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import RAWGGamesRouter from './routes/games';
-import { accountRouter } from './routes/accounts';
+import { accountRouter } from './routes/auth';
 import userGamesRoute from './routes/userGames';
 import top100GamesRouter from './routes/top100Games';
 // import animeRouter from '../routes/anime';
