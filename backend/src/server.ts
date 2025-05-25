@@ -5,7 +5,6 @@ import path from 'path';
 import RAWGGamesRouter from './routes/games';
 import { accountRouter } from './routes/auth';
 import userGamesRoute from './routes/userGames';
-import top100GamesRouter from './routes/top100Games';
 // import animeRouter from '../routes/anime';
 // import searchRouter from '../routes/search';
 // import moviesRouter from '../routes/movies';
@@ -72,7 +71,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 app.use('/api/games', RAWGGamesRouter);
 app.use('/api/userGames', userGamesRoute);
 app.use('/api/accounts', accountRouter);
-app.use('/api/top100games', top100GamesRouter);
+
 // app.use('/api/anime', animeRouter);
 // app.use('/api/search', searchRouter);
 // app.use('/api/movies', moviesRouter);
