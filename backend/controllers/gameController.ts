@@ -17,7 +17,7 @@ export const getGames = async (req: Request, res: Response) => {
 
     const query = `
       SELECT * FROM games 
-      ORDER BY ${sortField} ${(sortOrder as String).toUpperCase()} 
+      ORDER BY ${sortField} ${(sortOrder as string).toUpperCase()} 
       LIMIT $1 OFFSET $2
     `;
     

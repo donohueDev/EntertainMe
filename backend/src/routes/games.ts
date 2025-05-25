@@ -33,7 +33,7 @@ interface Game {
 const processGameData = async (game: Game): Promise<void> => {
   try {
     // Check if the required properties exist on the game object
-    if (!game || !game.id || !game.slug || !game.name) {
+    if (!game?.id || !game.slug || !game.name) {
       console.error('Skipping invalid game data:', game);
       return;
     }
@@ -80,7 +80,7 @@ const processGameData = async (game: Game): Promise<void> => {
       detailedGame.saturated_color,
       detailedGame.dominant_color,
       detailedGame.esrb_rating ? detailedGame.esrb_rating.name : null,
-      detailedGame.description_raw || detailedGame.description
+      detailedGame.description_raw ?? detailedGame.description
     ]);
 
     console.log(`Successfully inserted game ${detailedGame.name}`);

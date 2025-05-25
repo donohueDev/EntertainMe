@@ -27,7 +27,7 @@ if (process.env.DATABASE_URL) {
     host: process.env.DB_HOST,
     database: process.env.DB_NAME,
     password: process.env.DB_PASSWORD,
-    port: parseInt(process.env.DB_PORT || '5432'),
+    port: parseInt(process.env.DB_PORT ?? '5432'),
   };
 }
 
@@ -43,7 +43,7 @@ console.log('Database Configuration:', {
 const pool = new Pool(dbConfig);
 
 // Test the connection
-pool.connect((err: Error | undefined, client: PoolClient | undefined, done: (release?: any) => void) => {
+pool.connect((err: Error | undefined, client: PoolClient | undefined, done: (release?: unknown) => void) => {
   if (err) {
     console.error('Error connecting to the database:', err);
     console.error('Connection details:', {

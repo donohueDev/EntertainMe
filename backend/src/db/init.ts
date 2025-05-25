@@ -79,7 +79,7 @@ if (require.main === module) {
       console.log('Database initialization completed');
       process.exit(0);
     })
-    .catch((error) => {
+    .catch((error: unknown) => {
       console.error('Database initialization failed:', error);
       process.exit(1);
     });

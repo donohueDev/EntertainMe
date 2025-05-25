@@ -86,7 +86,7 @@ testDatabaseConnection()
     console.log('All tests passed!');
     process.exit(0);
   })
-  .catch((error) => {
+  .catch((error: unknown) => {
     console.error('Test failed:', error);
     process.exit(1);
   }); 
