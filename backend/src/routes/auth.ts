@@ -37,7 +37,7 @@ interface JwtPayload {
 const router = express.Router();
 
 // Register endpoint to create new user and add to database
-router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Response) => {
+router.post('/register', async (req: Request<object, {}, RegisterRequest>, res: Response) => {
   const { email, username, password } = req.body;
   console.log("Request to /api/accounts/register");
 
@@ -86,7 +86,7 @@ router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Resp
 });
 
 // Login endpoint 
-router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) => {
+router.post('/login', async (req: Request<object, {}, LoginRequest>, res: Response) => {
   const { username, password } = req.body;
   console.log("Request to /api/accounts/login");
 
@@ -135,7 +135,7 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) 
 router.get('/me', (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'Authorization header missing or malformed' });
   }
 

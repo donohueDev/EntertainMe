@@ -16,8 +16,8 @@ import initializeDatabase from './db/init';
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const app = express();
-const PORT = process.env.PORT ?? 5001;
-const NODE_ENV = process.env.NODE_ENV ?? 'development';
+const PORT = process.env.PORT || 5001;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Add request logging middleware
 app.use((req, res, next) => {
@@ -54,7 +54,7 @@ app.use(
 app.use(express.json());
 
 // Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error details:', {
     message: err.message,
     stack: err.stack,
@@ -93,7 +93,7 @@ app.get('/', (req, res) => {
   res.json({ 
     message: 'Welcome to the Entertainment API',
     environment: NODE_ENV,
-    version: process.env.npm_package_version ?? '1.0.0'
+    version: process.env.npm_package_version || '1.0.0'
   });
 });
 
@@ -112,7 +112,7 @@ initializeDatabase()
       });
     });
   })
-  .catch((error: unknown) => {
+  .catch((error) => {
     console.error('Failed to initialize database:', error);
     process.exit(1);
   }); 

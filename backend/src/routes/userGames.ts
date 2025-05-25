@@ -9,7 +9,7 @@ interface UserGame {
 
 interface Game {
   id: number;
-  [key: string]: any; // For other game properties
+  [key: string]: unknown; // For other game properties
 }
 
 interface RatingRequest {
@@ -59,8 +59,8 @@ router.get('/:userId/games', async (req: Request, res: Response) => {
       const userGame = userGames.find((ug: UserGame) => ug.game_id === game.id);
       return {
         ...game,
-        user_rating: userGame?.user_rating || null,
-        user_status: userGame?.user_status || null,
+        user_rating: userGame?.user_rating ?? null,
+        user_status: userGame?.user_status ?? null,
       };
     });
 
@@ -72,8 +72,7 @@ router.get('/:userId/games', async (req: Request, res: Response) => {
 });
 
 // Post route for submitting ratings
-router.post('/ratings', async (req: Request<{}, {}, RatingRequest>, res: Response) => {
-  const { username, gameId, rating, status } = req.body;
+router.post('/ratings', async (req: Request<object, {}, RatingRequest>, res: Response) => {  const { username, gameId, rating, status } = req.body;
   console.log("Request to /api/ratings");
 
   try {

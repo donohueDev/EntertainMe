@@ -1,0 +1,3 @@
+@@ -36,1 +36,1 @@
+-    if (!game?.id || !game.slug || !game.name) {
++    if (!game.id || !game.slug || !game.name) {
