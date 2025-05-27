@@ -89,13 +89,13 @@ const GameDetailPage = () => {
       const response = await axios.post(`${API_BASE_URL}/api/userGames/ratings`, {
         username: userInfo.username,
         gameId: game.id,
-        rating: Math.round(rating),
+        rating: rating,
         status,
       });
       console.log("Post review response: ", response);
       setUserGameData({
         ...userGameData,
-        user_rating: Math.round(rating),
+        user_rating: rating,
         user_status: status
       });
 

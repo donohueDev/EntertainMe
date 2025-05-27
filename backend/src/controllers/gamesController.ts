@@ -258,5 +258,25 @@ export const gamesController = {
       console.error('Error handling request:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
+  },
+
+  // Get top 50 games
+  getTopGames: async (_req: Request, res: Response) => {
+    try {
+      const sql = 'SELECT * FROM games ORDER BY rating DESC LIMIT 50;';
+      
+      pool.query(sql, [], (err: Error | null, result) => {
+        if (err) {
+          console.error('Error fetching top games:', err);
+          res.status(500).json({ error: 'Database error' });
+          return;
+        }
+        console.log('Found top games:', result.rows.length);
+        res.json(result.rows);
+      });
+    } catch (error) {
+      console.error('Error handling request:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   }
 }; 

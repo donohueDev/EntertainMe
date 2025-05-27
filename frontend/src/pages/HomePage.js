@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import { useUser } from '../context/userContext';
 
 const HomePage = () => {
   const [games, setGames] = useState([]);
@@ -24,6 +25,7 @@ const HomePage = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const scrollContainerRef = useRef(null);
+  const { isAuthenticated } = useUser();
 
   const handleScroll = (direction) => {
     if (scrollContainerRef.current) {
@@ -44,10 +46,10 @@ const HomePage = () => {
 
   useEffect(() => {
     const fetchGames = async () => {
-      console.log('Fetching games...');
+      console.log('Fetching top games...');
       try {
-        // Fetch the most recently updated games from the server
-        const response = await axios.get(`${API_BASE_URL}/api/games/`, {
+        // Fetch the top 50 games from the server
+        const response = await axios.get(`${API_BASE_URL}/api/games/top`, {
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
@@ -184,6 +186,66 @@ const HomePage = () => {
           EntertainME
         </Typography>
       </Box>
+
+      {/* Introduction Section */}
+      <Box 
+        sx={{ 
+          mb: 6,
+          p: 4,
+          borderRadius: 2,
+          background: 'linear-gradient(45deg, #042454 30%, #374265 90%)',
+          boxShadow: '0 3px 5px 2px rgba(0, 0, 0, .3)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          gap: 2
+        }}
+      >
+        <Typography 
+          variant="h3" 
+          sx={{ 
+            fontWeight: 'bold',
+            fontFamily: 'Varela Round',
+            color: '#ffffff',
+            mb: 2
+          }}
+        >
+          Welcome to EntertainME
+        </Typography>
+        
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            color: '#E0E0E0',
+            maxWidth: '800px',
+            mb: 3
+          }}
+        >
+          Your personal gaming companion. Track your favorite games, rate your experiences, 
+          and discover new titles to play. Join our community of gamers today!
+        </Typography>
+
+        {!isAuthenticated && (
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => navigate('/auth/register')}
+            sx={{
+              py: 1.5,
+              px: 4,
+              fontSize: '1.1rem',
+              backgroundColor: '#4CAF50',
+              '&:hover': {
+                backgroundColor: '#45a049',
+              },
+              boxShadow: '0 3px 5px 2px rgba(0, 0, 0, .2)',
+            }}
+          >
+            Join Now
+          </Button>
+        )}
+      </Box>
   
       <Typography 
           variant="h4" 
@@ -192,10 +254,11 @@ const HomePage = () => {
             fontFamily: 'Varela Round',
             textAlign: 'left', 
             flexGrow: 1, 
-            color: '#E0E0E0' // Light gray
+            color: '#E0E0E0', // Light gray
+            mb: 3
           }}
         >
-          Top 100 Games
+          Top 50 Games
         </Typography>
 
       {/* Games container with navigation arrows */}

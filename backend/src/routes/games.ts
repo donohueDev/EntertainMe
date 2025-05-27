@@ -9,6 +9,9 @@ router.post('/rawg-games', gamesController.loadGamesFromRawg);
 // GET all games
 router.get('/', gamesController.getAllGames);
 
+// Get top 50 games
+router.get('/top', gamesController.getTopGames);
+
 // Search games by query
 router.get('/search', gamesController.searchGames);
 

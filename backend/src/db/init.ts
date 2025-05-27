@@ -46,7 +46,7 @@ async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
         game_id INTEGER REFERENCES games(id),
-        rating INTEGER,
+        rating DECIMAL(3,1),
         status TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, game_id)

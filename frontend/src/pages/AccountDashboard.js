@@ -18,9 +18,16 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
-  Grid
+  Grid,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import Rating from '@mui/material/Rating';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 
 const AccountDashboard = () => {
   const [games, setGames] = useState([]);
@@ -31,6 +38,8 @@ const AccountDashboard = () => {
   const navigate = useNavigate();
   const { username } = useParams();
   const { isAuthenticated, getUserInfo, logout } = useUser();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [gameToDelete, setGameToDelete] = useState(null);
 
   // Fetch user's games when component mounts
   useEffect(() => {
@@ -87,6 +96,31 @@ const AccountDashboard = () => {
 
   const handleGameClick = (game) => {
     navigate(`/game/${game.id}`, { state: { game } });
+  };
+
+  const handleDeleteClick = (game, event) => {
+    event.stopPropagation(); // Prevent card click
+    setGameToDelete(game);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      const userInfo = getUserInfo();
+      await axios.delete(`${API_BASE_URL}/api/userGames/${userInfo.userId}/games/${gameToDelete.id}`);
+      setGames(games.filter(g => g.id !== gameToDelete.id));
+      setFilteredGames(filteredGames.filter(g => g.id !== gameToDelete.id));
+      setDeleteDialogOpen(false);
+      setGameToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete game:', error);
+      setError('Failed to remove game from your collection. Please try again later.');
+    }
+  };
+
+  const handleUpdateClick = (game, event) => {
+    event.stopPropagation(); // Prevent card click
+    handleGameClick(game);
   };
 
   // If loading, show loading spinner
@@ -218,8 +252,12 @@ const AccountDashboard = () => {
                   height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
+                  position: 'relative',
                   '&:hover': {
-                    transform: 'scale(1.02)'
+                    transform: 'scale(1.02)',
+                    '& .action-buttons': {
+                      opacity: 1
+                    }
                   }
                 }}
                 onClick={() => handleGameClick(game)}
@@ -240,14 +278,70 @@ const AccountDashboard = () => {
                   {game.user_status?.toLowerCase() !== 'planned' && (
                     <Box display="flex" alignItems="center" mt={1}>
                       <Typography component="legend">Your Rating:</Typography>
-                      <Rating value={game.user_rating || 0} readOnly />
+                      <Rating 
+                        value={game.user_rating || 0} 
+                        readOnly 
+                        precision={0.5}
+                      />
                     </Box>
                   )}
                 </CardContent>
+                <Box 
+                  className="action-buttons"
+                  sx={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    display: 'flex',
+                    gap: 1,
+                    opacity: 0,
+                    transition: 'opacity 0.2s',
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    borderRadius: 1,
+                    padding: 0.5,
+                    '& .MuiIconButton-root': {
+                      color: 'white',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                      }
+                    }
+                  }}
+                >
+                  <IconButton 
+                    size="small" 
+                    onClick={(e) => handleUpdateClick(game, e)}
+                    color="primary"
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton 
+                    size="small" 
+                    onClick={(e) => handleDeleteClick(game, e)}
+                    color="error"
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
               </Card>
             </Grid>
           ))}
         </Grid>
+
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+        >
+          <DialogTitle>Remove Game</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to remove {gameToDelete?.name} from your collection?
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleDeleteConfirm} color="error">Delete</Button>
+          </DialogActions>
+        </Dialog>
 
         <Box mt={4} display="flex" justifyContent="center">
           <Button variant="contained" color="secondary" onClick={handleLogout}>
