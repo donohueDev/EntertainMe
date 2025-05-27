@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model gameCollection {
+  id                Int     @id @default(autoincrement())
+  slug              String
+  name              String
+  released          String?
+  tba               Boolean?
+  background_image  String?
+  rating            Float?
+  rating_top        Int?
+  ratings_count     Int?
+  reviews_text_count Int?
+  added             Int?
+  metacritic        Int?
+  playtime          Int?
+  suggestions_count Int?
+  updated           String?
+  reviews_count     Int?
+  saturated_color   String?
+  dominant_color    String?
+  esrb_rating       String?
+  description_raw   String?
+}
+
+model animeCollection {
+  mal_id             Int      @id
+  slug               String
+  url                String
+  title              String
+  title_english      String?
+  title_japanese     String?
+  synopsis           String?
+  background         String?
+  type               String?
+  source             String?
+  episodes           Int?
+  status             String?
+  airing             Boolean
+  aired_from         DateTime?
+  aired_to           DateTime?
+  duration           String?
+  rating             String?
+  score              Float?
+  scored_by          Int?
+  rank               Int?
+  popularity         Int?
+  members            Int?
+  favorites          Int?
+  season             String?
+  year               Int?
+  approved           Boolean
+  broadcast_day      String?
+  broadcast_time     String?
+  broadcast_timezone String?
+  broadcast_string   String?
+  trailer_url        String?
+  trailer_youtube_id String?
+  trailer_embed_url  String?
+  image_url          String?
+  image_large_url    String?
+  image_small_url    String?
+  updated_at         DateTime @default(now())
+}
+
+model userCollection {
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  username   String   @unique
+  password   String
+  created_at DateTime @default(now())
+}
+
+model userGameCollection {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  game_id    Int
+  rating     Float?
+  status     String?
+  created_at DateTime @default(now())
+
+  @@unique([user_id, game_id])
+  @@index([user_id])
+  @@index([game_id])
+}
+
+model top50GameCollection {
+  id         Int      @id @default(autoincrement())
+  game_id    Int
+  rank       Int
+  value      Float?
+  created_at DateTime @default(now())
+
+  @@unique([rank])
+  @@index([game_id])
+}

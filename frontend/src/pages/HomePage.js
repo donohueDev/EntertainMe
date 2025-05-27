@@ -48,7 +48,6 @@ const HomePage = () => {
     const fetchGames = async () => {
       console.log('Fetching top games...');
       try {
-        // Fetch the top 50 games from the server
         const response = await axios.get(`${API_BASE_URL}/api/games/top`, {
           headers: {
             'Accept': 'application/json',
@@ -64,10 +63,6 @@ const HomePage = () => {
         }
       } catch (error) {
         console.error("Failed to fetch games:", error.message);
-        if (error.response) {
-          console.error("Error response:", error.response.data);
-          console.error("Error status:", error.response.status);
-        }
         setError('Failed to load games. Please try again later.');
       } finally {
         setLoading(false);
@@ -119,31 +114,6 @@ const HomePage = () => {
         >
           Try Loading Games Again
         </Button>
-      </Container>
-    );
-  }
-
-  if (games.length === 0) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="info" sx={{ mb: 2 }}>
-          No games found. Click the button below to load some games from RAWG.
-        </Alert>
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <Button 
-            variant="contained" 
-            color="primary"
-            size="large"
-            onClick={handleLoadGames}
-            sx={{ 
-              py: 2,
-              px: 4,
-              fontSize: '1.1rem'
-            }}
-          >
-            Load Games from RAWG
-          </Button>
-        </Box>
       </Container>
     );
   }
@@ -321,7 +291,7 @@ const HomePage = () => {
                 backgroundColor: '#1A1A1A', // Darker gray for cards
                 border: '1px solid #424242', // Medium gray border
               }}
-              onClick={() => navigate(`/game/${game.id}`, { state: { game } })}
+              onClick={() => navigate(`/game/${game.game_id}`)} // Note: using game_id instead of id
             >
               <CardMedia
                 component="img"

@@ -1,27 +1,24 @@
-// // movies.ts will be used to implement movie side of app
+import express from 'express';
+import { moviesController } from '../controllers/moviesController';
 
-// import { Router, Request, Response } from 'express';
-// import { getPopularMovies } from '../services/movieService';
+const router = express.Router();
 
-// interface Movie {
-//   id: number;
-//   title: string;
-//   overview: string;
-//   poster_path: string;
-//   release_date: string;
-//   vote_average: number;
-// }
+// POST request to fetch and insert movies from the TMDB API
+router.post('/tmdb-movies', moviesController.loadMoviesFromTmdb);
 
-// const router = Router();
+// GET all movies
+router.get('/', moviesController.getAllMovies);
 
-// router.get('/movies', async (req: Request, res: Response) => {
-//   try {
-//     const movies: Movie[] = await getPopularMovies();
-//     res.json(movies);
-//   } catch (error) {
-//     console.error('Error fetching movies:', error);
-//     res.status(500).json({ error: 'Error fetching movies' });
-//   }
-// });
+// Get top 50 movies
+router.get('/top', moviesController.getTopMovies);
 
-// export default router; 
+// Search movies by query
+router.get('/search', moviesController.searchMovies);
+
+// Test route to check database connection
+router.get('/test', moviesController.testConnection);
+
+// GET movie by ID
+router.get('/:id', moviesController.getMovieById);
+
+export default router;

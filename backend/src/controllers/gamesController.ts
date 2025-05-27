@@ -1,6 +1,8 @@
+import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 import axios from 'axios';
-import pool from '../config/database';
+
+const prisma = new PrismaClient();
 
 interface Game {
   id: number;
@@ -18,7 +20,6 @@ interface Game {
   playtime?: number;
   suggestions_count?: number;
   updated?: string;
-  user_game?: boolean;
   reviews_count?: number;
   saturated_color?: string;
   dominant_color?: string;
@@ -28,58 +29,64 @@ interface Game {
 }
 
 // Function to process and insert game data into the database
-const processGameData = async (game: Game): Promise<void> => {
+const processGameData = async (game: Game): Promise<boolean> => {
   try {
-    if (!game?.id || !game.slug || !game.name) {
+    if (!game?.id || !game.slug || !game.name || !game.released) {
       console.error('Skipping invalid game data:', game);
-      return;
+      return false;
     }
 
     const { data: detailedGame } = await axios.get<Game>(`https://api.rawg.io/api/games/${game.id}`, {
       params: { key: process.env.RAWG_API_KEY }
     });
 
-    const existingGameResult = await pool.query('SELECT id FROM games WHERE id = $1', [game.id]);
-    
-    if (existingGameResult.rows.length > 0) {
-      console.log(`Game with ID ${game.id} already exists in the database.`);
-      return;
+    // Check ESRB rating
+    const isAdultsOnly = detailedGame.esrb_rating?.name.toLowerCase() === 'adults-only' || detailedGame.esrb_rating?.name.toLowerCase() === 'adults only';
+
+    if (isAdultsOnly || !detailedGame.esrb_rating) {
+      console.log(`Skipping game ${detailedGame.name} due to explicit content`);
+      return false;
     }
 
-    await pool.query(`
-      INSERT INTO games (
-        id, slug, name, released, tba, background_image, rating, rating_top, ratings_count,
-        reviews_text_count, added, metacritic, playtime, suggestions_count,
-        updated, user_game, reviews_count, saturated_color, dominant_color, esrb_rating, description_raw
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
-    `, [
-      detailedGame.id,
-      detailedGame.slug,
-      detailedGame.name,
-      detailedGame.released,
-      detailedGame.tba,
-      detailedGame.background_image,
-      detailedGame.rating,
-      detailedGame.rating_top,
-      detailedGame.ratings_count,
-      detailedGame.reviews_text_count,
-      detailedGame.added,
-      detailedGame.metacritic,
-      detailedGame.playtime,
-      detailedGame.suggestions_count,
-      detailedGame.updated,
-      detailedGame.user_game,
-      detailedGame.reviews_count,
-      detailedGame.saturated_color,
-      detailedGame.dominant_color,
-      detailedGame.esrb_rating ? detailedGame.esrb_rating.name : null,
-      detailedGame.description_raw ?? detailedGame.description
-    ]);
+    const existingGame = await prisma.gameCollection.findUnique({
+      where: { id: game.id }
+    });
+    
+    if (existingGame) {
+      console.log(`Game with ID ${game.id} already exists in the database.`);
+      return false;
+    }
+
+    await prisma.gameCollection.create({
+      data: {
+        id: detailedGame.id,
+        slug: detailedGame.slug,
+        name: detailedGame.name,
+        released: detailedGame.released,
+        tba: detailedGame.tba,
+        background_image: detailedGame.background_image,
+        rating: detailedGame.rating,
+        rating_top: detailedGame.rating_top,
+        ratings_count: detailedGame.ratings_count,
+        reviews_text_count: detailedGame.reviews_text_count,
+        added: detailedGame.added,
+        metacritic: detailedGame.metacritic,
+        playtime: detailedGame.playtime,
+        suggestions_count: detailedGame.suggestions_count,
+        updated: detailedGame.updated,
+        reviews_count: detailedGame.reviews_count,
+        saturated_color: detailedGame.saturated_color,
+        dominant_color: detailedGame.dominant_color,
+        esrb_rating: detailedGame.esrb_rating?.name,
+        description_raw: detailedGame.description_raw ?? detailedGame.description
+      }
+    });
 
     console.log(`Successfully inserted game ${detailedGame.name}`);
+    return true;
   } catch (error) {
     console.error('Error processing game data:', error);
-    throw error;
+    return false;
   }
 };
 
@@ -90,10 +97,11 @@ export const gamesController = {
       let page = 1;
       const pageSize = 40;
       let totalGamesInserted = 0;
-      const targetGames = 500;
+      const targetGames = 50;
       const maxRetries = 3;
       const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
+      
+      console.log(`Starting to fetch games from RAWG API... Target: ${targetGames} games`);
       while (totalGamesInserted < targetGames) {
         let retryCount = 0;
         let success = false;
@@ -105,8 +113,9 @@ export const gamesController = {
                 key: process.env.RAWG_API_KEY, 
                 page, 
                 page_size: pageSize,
-                ordering: '-rating',
-                exclude_parents: true
+                ordering: '-ratings_count',
+                exclude_parents: true,
+                exclude_additions: true,
               },
             });
 
@@ -120,9 +129,11 @@ export const gamesController = {
               if (totalGamesInserted >= targetGames) break;
               
               try {
-                await processGameData(game);
-                totalGamesInserted++;
-                console.log(`Inserted ${totalGamesInserted} games so far.`);
+                const wasInserted = await processGameData(game);
+                if (wasInserted) {
+                  totalGamesInserted++;
+                  console.log(`Successfully inserted ${totalGamesInserted} games so far.`);
+                }
                 await delay(100);
               } catch (err) {
                 console.error(`Failed to insert game ${game.id}:`, err instanceof Error ? err.message : 'Unknown error');
@@ -168,24 +179,19 @@ export const gamesController = {
   // Get all games
   getAllGames: async (_req: Request, res: Response) => {
     try {
-      const sql = 'SELECT * FROM games ORDER BY rating DESC;';
-      
-      pool.query(sql, [], (err: Error | null, result) => {
-        if (err) {
-          console.error('Error fetching games:', err);
-          res.status(500).json({ error: 'Database error' });
-          return;
-        }
-        console.log('Found games:', result.rows.length);
-        res.json(result.rows);
+      const games = await prisma.gameCollection.findMany({
+        orderBy: { rating: 'desc' }
       });
+      
+      console.log('Found games:', games.length);
+      res.json(games);
     } catch (error) {
-      console.error('Error handling request:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('Error fetching games:', error);
+      res.status(500).json({ error: 'Database error' });
     }
   },
 
-  // Search games
+  // Search gameCollection
   searchGames: async (req: Request, res: Response) => {
     try {
       const { query } = req.query;
@@ -194,35 +200,42 @@ export const gamesController = {
         return res.status(400).json({ error: 'Search query is required' });
       }
 
-      const sql = 'SELECT * FROM games WHERE name ILIKE $1 OR slug ILIKE $1 ORDER BY rating DESC';
-      
-      pool.query(sql, [`%${query}%`], (err: Error | null, result) => {
-        if (err) {
-          console.error('Error searching games:', err);
-          res.status(500).json({ error: 'Database error' });
-          return;
-        }
-        console.log('Found games:', result.rows.length);
-        res.json(result.rows);
+      // Ensure query is a string
+      const searchQuery = Array.isArray(query) ? query[0] : query;
+      if (typeof searchQuery !== 'string') {
+        return res.status(400).json({ error: 'Search query must be a string' });
+      }
+
+      const games = await prisma.gameCollection.findMany({
+        where: {
+          OR: [
+            { name: { contains: searchQuery, mode: 'insensitive' } },
+            { slug: { contains: searchQuery, mode: 'insensitive' } }
+          ]
+        },
+        orderBy: { rating: 'desc' }
       });
+      
+      console.log('Found games:', games.length);
+      res.json(games);
     } catch (error) {
-      console.error('Error handling request:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('Error searching games:', error);
+      res.status(500).json({ error: 'Database error' });
     }
   },
 
   // Test database connection
   testConnection: (_req: Request, res: Response) => {
     try {
-      pool.query('SELECT COUNT(*) as count FROM games', [], (err: Error | null, result) => {
-        if (err) {
+      prisma.gameCollection.count()
+        .then(count => {
+          console.log('Database connection successful, games count:', count);
+          res.json({ message: 'Database is working', gamesCount: count });
+        })
+        .catch(err => {
           console.error('Error checking games count:', err);
           res.status(500).json({ error: 'Database error' });
-          return;
-        }
-        console.log('Database connection successful, games count:', result.rows[0].count);
-        res.json({ message: 'Database is working', gamesCount: result.rows[0].count });
-      });
+        });
     } catch (error) {
       console.error('Error in test route:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -238,45 +251,42 @@ export const gamesController = {
         return res.status(400).json({ error: 'Invalid game ID' });
       }
 
-      const sql = 'SELECT * FROM games WHERE id = $1';
-      
-      pool.query(sql, [id], (err: Error | null, result) => {
-        if (err) {
-          console.error('Error fetching game:', err);
-          res.status(500).json({ error: 'Database error' });
-          return;
-        }
-
-        if (result.rows.length === 0) {
-          res.status(404).json({ error: 'Game not found' });
-          return;
-        }
-        console.log('Found game using search query:', result.rows[0]);
-        res.json(result.rows[0]);
+      const game = await prisma.gameCollection.findUnique({
+        where: { id }
       });
+      
+      if (!game) {
+        return res.status(404).json({ error: 'Game not found' });
+      }
+      console.log('Found game using search query:', game);
+      res.json(game);
     } catch (error) {
-      console.error('Error handling request:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('Error fetching game:', error);
+      res.status(500).json({ error: 'Database error' });
     }
   },
 
   // Get top 50 games
   getTopGames: async (_req: Request, res: Response) => {
     try {
-      const sql = 'SELECT * FROM games ORDER BY rating DESC LIMIT 50;';
-      
-      pool.query(sql, [], (err: Error | null, result) => {
-        if (err) {
-          console.error('Error fetching top games:', err);
-          res.status(500).json({ error: 'Database error' });
-          return;
-        }
-        console.log('Found top games:', result.rows.length);
-        res.json(result.rows);
+      const topGames = await prisma.gameCollection.findMany({
+        where: {
+          ratings_count: {
+            gt: 0 // Only include games with ratings
+          }
+        },
+        orderBy: [
+          { ratings_count: 'desc' }, // Primary sort by number of ratings
+          { rating: 'desc' }         // Secondary sort by rating
+        ],
+        take: 50
       });
+      
+      console.log('Found top popular games:', topGames.length);
+      res.json(topGames);
     } catch (error) {
-      console.error('Error handling request:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('Error fetching top games:', error);
+      res.status(500).json({ error: 'Database error' });
     }
   }
-}; 
+};

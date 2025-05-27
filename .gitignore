@@ -97,3 +97,5 @@ yarn-error.log
 
 # Bundle artifact
 *.jsbundle
+
+/generated/prisma

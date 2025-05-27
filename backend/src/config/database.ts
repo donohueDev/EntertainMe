@@ -5,9 +5,12 @@ import path from 'path';
 // Load environment variables from root directory
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
+// Determine if the environment is production
+const isProduction = process.env.NODE_ENV === 'production';
+
 // Parse DATABASE_URL if it exists (for production)
 let dbConfig;
-if (process.env.DATABASE_URL) {
+if (isProduction && process.env.DATABASE_URL) {
   // Parse the DATABASE_URL
   const url = new URL(process.env.DATABASE_URL);
   dbConfig = {
@@ -28,6 +31,7 @@ if (process.env.DATABASE_URL) {
     database: process.env.DB_NAME,
     password: process.env.DB_PASSWORD,
     port: parseInt(process.env.DB_PORT ?? '5432'),
+    ssl: false // Disable SSL for local development
   };
 }
 
@@ -64,4 +68,4 @@ pool.on('error', (err) => {
   process.exit(-1);
 });
 
-export default pool; 
+export default pool;

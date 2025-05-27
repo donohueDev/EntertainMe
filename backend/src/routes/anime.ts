@@ -1,61 +1,23 @@
-// import express, { Request, Response } from 'express';
+import express from "express";
+import { animeController } from "../controllers/animeController";
 
-// interface Anime {
-//   id: number;
-//   title_romaji: string;
-//   title_english: string | null;
-//   title_native: string | null;
-//   title_user_preferred: string | null;
-//   description: string | null;
-//   format: string | null;
-//   status: string | null;
-//   start_date: string | null;
-//   end_date: string | null;
-//   episodes: number | null;
-//   duration: number | null;
-//   source: string | null;
-//   popularity: number | null;
-//   average_score: number | null;
-//   mean_score: number | null;
-//   favourites: number | null;
-//   cover_image: string | null;
-//   banner_image: string | null;
-//   genres: string | null;
-//   studios: string | null;
-//   created_at: string;
-// }
+const router = express.Router();
 
-// const router = express.Router();
-// let db: Database;
+// POST request to fetch and insert anime from the API
+router.post("/anime", animeController.loadAnimeFromApi);
 
-// // Initialize database connection
-// initDatabase().then((database) => {
-//   db = database;
-// }).catch((error) => {
-//   console.error('Failed to initialize database:', error);
-// });
+// GET all anime
+router.get("/", animeController.getAllAnime);
 
-// // Get all anime
-// router.get('/', async (req: Request, res: Response) => {
-//   if (!db) {
-//     res.status(500).json({ error: 'Database not initialized' });
-//     return;
-//   }
+// GET anime by ID
+router.get("/:id", animeController.getAnimeById);
 
-//   try {
-//     const sql = 'SELECT * FROM animes ORDER BY created_at DESC;';
-//     db.all(sql, [], (err, rows: Anime[]) => {
-//       if (err) {
-//         console.error('Error fetching anime:', err);
-//         res.status(500).json({ error: 'Database error' });
-//         return;
-//       }
-//       res.json(rows);
-//     });
-//   } catch (error) {
-//     console.error('Error handling request:', error);
-//     res.status(500).json({ error: 'Internal server error' });
-//   }
-// });
+// Search anime by query
+router.get("/search", animeController.searchAnime);
 
-// export default router; 
+router.get("/top", animeController.getTopAnime);
+
+// Test route to check database connection
+router.get("/test", animeController.testConnection);
+
+export default router;

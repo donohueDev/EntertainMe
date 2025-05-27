@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import { PrismaClient } from '@prisma/client';
 import RAWGGamesRouter from './routes/games';
 import { accountRouter } from './routes/auth';
 import userGamesRoute from './routes/userGames';
@@ -10,7 +11,6 @@ import userGamesRoute from './routes/userGames';
 // import moviesRouter from '../routes/movies';
 // import showsRouter from '../routes/shows';
 // import protectedRoute from '../routes/protectedRoute';
-import initializeDatabase from './db/init';
 
 // Load environment variables from root directory
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
@@ -18,6 +18,11 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 const app = express();
 const PORT = process.env.PORT ?? 5001;
 const NODE_ENV = process.env.NODE_ENV ?? 'development';
+
+// Initialize Prisma Client
+console.log('Initializing Prisma Client...');
+const prisma = new PrismaClient();
+console.log('Prisma Client initialized successfully');
 
 // Add request logging middleware
 app.use((req, res, next) => {
@@ -97,10 +102,12 @@ app.get('/', (req, res) => {
   });
 });
 
-// Initialize database and start server
-initializeDatabase()
-  .then(() => {
-    console.log('Database initialized successfully');
+// Start server and check Prisma connection
+async function startServer() {
+  try {
+    await prisma.$connect(); // Ensure Prisma Client can connect to the database
+    console.log('Database connection successful');
+
     app.listen(PORT, () => {
       console.log(`Server is running in ${NODE_ENV} mode on port ${PORT}`);
       console.log('Environment variables loaded:', {
@@ -111,8 +118,12 @@ initializeDatabase()
         DB_USER: process.env.DB_USER
       });
     });
-  })
-  .catch((error: unknown) => {
-    console.error('Failed to initialize database:', error);
+  } catch (error) {
+    console.error('Failed to connect to the database:', error);
     process.exit(1);
-  }); 
+  }
+}
+
+console.log('DATABASE_URL:', process.env.DATABASE_URL);
+
+startServer();
