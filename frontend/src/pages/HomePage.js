@@ -272,9 +272,9 @@ const HomePage = () => {
             flexGrow: 1,
           }}
         >
-          {games.map((game) => (
+          {games.map((gameEntry) => (
             <Card
-              key={game.id}
+              key={gameEntry.game.id}
               sx={{
                 width: 200,
                 height: 180,
@@ -291,13 +291,22 @@ const HomePage = () => {
                 backgroundColor: '#1A1A1A', // Darker gray for cards
                 border: '1px solid #424242', // Medium gray border
               }}
-              onClick={() => navigate(`/game/${game.game_id}`)} // Note: using game_id instead of id
+              onClick={() => {
+                console.log('Game data:', gameEntry);
+                if (gameEntry && gameEntry.game && gameEntry.game.slug) {
+                  navigate(`/game/${gameEntry.game.slug}`, {
+                    state: { game: gameEntry.game }
+                  });
+                } else {
+                  console.error('Invalid game data:', gameEntry);
+                }
+              }}
             >
               <CardMedia
                 component="img"
                 height="130"
-                image={game.background_image}
-                alt={game.name}
+                image={gameEntry.game.background_image || '/placeholder-image.jpg'} // Add fallback image
+                alt={gameEntry.game.name}
                 sx={{ objectFit: 'cover' }}
               />
               <CardContent
@@ -323,7 +332,7 @@ const HomePage = () => {
                     WebkitBoxOrient: 'vertical',
                   }}
                 >
-                  {game.name}
+                  {gameEntry.game.name}
                 </Typography>
               </CardContent>
             </Card>

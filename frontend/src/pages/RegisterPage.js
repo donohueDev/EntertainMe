@@ -171,6 +171,15 @@ const RegisterPage = () => {
                 'Register'
               )}
             </Button>
+
+            <Button
+              variant="text"
+              size="large"
+              onClick={() => navigate('/auth/login')}
+              sx={{ mt: 1 }}
+            >
+              Already have an account? Log in.
+            </Button>
           </Box>
         </Paper>
       </Box>

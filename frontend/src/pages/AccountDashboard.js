@@ -95,7 +95,7 @@ const AccountDashboard = () => {
   };
 
   const handleGameClick = (game) => {
-    navigate(`/game/${game.id}`, { state: { game } });
+    navigate(`/game/${game.slug}`, { state: { game } });
   };
 
   const handleDeleteClick = (game, event) => {

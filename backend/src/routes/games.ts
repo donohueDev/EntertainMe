@@ -19,6 +19,9 @@ router.get('/search', gamesController.searchGames);
 router.get('/test', gamesController.testConnection);
 
 // GET game by ID
-router.get('/:id', gamesController.getGameById);
+router.get('/:slug', gamesController.getGameBySlug);
 
-export default router; 
+// Update top games
+router.post('/update-top-games', gamesController.updateTopGames);
+
+export default router;

@@ -10,6 +10,6 @@
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node"
   },
-  "include": ["src/**/*", "../database"],
+  "include": ["src/**/*", "../database", "../tests/testConnection.ts"],
   "exclude": ["node_modules"]
 } 

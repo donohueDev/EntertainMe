@@ -22,18 +22,31 @@ import {
   Rating,
   Snackbar
 } from '@mui/material';
+import Tooltip from '@mui/material/Tooltip';
+
+// Utility function to format date strings
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
 
 // GameDetailPage component for displaying detailed game information
 const GameDetailPage = () => {
   const location = useLocation();
-  const game = location.state?.game;
+  const navigate = useNavigate();
+  const initialGame = location.state?.game;
+  const [game, setGame] = useState(initialGame);
   const [rating, setRating] = useState(0);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userGameData, setUserGameData] = useState(null);
-  const navigate = useNavigate();
   const { isAuthenticated, getUserInfo } = useUser();
 
   // Function to get English description
@@ -47,6 +60,27 @@ const GameDetailPage = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Fetch game's complete data when component mounts or when initialGame changes
+  useEffect(() => {
+    const fetchGameDetails = async () => {
+      if (!initialGame?.slug) return;
+      
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/games/${initialGame.slug}`);
+        if (response.data) {
+          setGame(response.data);
+        } else {
+          setError('Failed to load game details');
+        }
+      } catch (error) {
+        console.error('Error fetching game details:', error);
+        setError('Failed to load game details. Please try again later.');
+      }
+    };
+
+    fetchGameDetails();
+  }, [initialGame?.slug]);
 
   // Fetch user's current game data when component mounts or when user/game changes
   useEffect(() => {
@@ -137,40 +171,56 @@ const GameDetailPage = () => {
               Game Information
             </Typography>
             <Grid container spacing={2}>
-              {game && (
-                <>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body1" sx={{ color: 'white' }}>
-                      <strong>Release Date:</strong> {game.released || 'N/A'}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body1" sx={{ color: 'white' }}>
-                      <strong>ESRB Rating:</strong> {game.esrb_rating || 'N/A'}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body1" sx={{ color: 'white' }}>
-                      <strong>Metacritic Score:</strong> {game.metacritic ? `${game.metacritic}/100` : 'N/A'}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body1" sx={{ color: 'white' }}>
-                      <strong>Average Rating:</strong> {game.rating ? `${game.rating}/5` : 'N/A'}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body1" sx={{ color: 'white' }}>
-                      <strong>Reviews Count:</strong> {game.reviews_count?.toLocaleString() || 'N/A'}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body1" sx={{ color: 'white' }}>
-                      <strong>Average Playtime:</strong> {game.playtime ? `${game.playtime} hours` : 'N/A'}
-                    </Typography>
-                  </Grid>
-                </>
-              )}
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body1" sx={{ color: 'white' }}>
+                  <strong>Release Date:</strong> {game.tba ? 'TBA' : (game.released ? formatDate(game.released) : 'N/A')}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Tooltip
+                  title={Array.isArray(game.platforms) && game.platforms.length > 0
+                    ? (
+                        <Box>
+                          {game.platforms.map((p, idx) => (
+                            <Typography key={idx} variant="body2" sx={{ color: 'white' }}>
+                              {p.platform?.name || p.platform?.slug || ''}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )
+                    : 'N/A'}
+                  placement="top"
+                  arrow
+                  enterTouchDelay={0}
+                  leaveTouchDelay={3000}
+                >
+                  <Typography variant="body1" sx={{ color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}>
+                    <strong>Platforms:</strong> {Array.isArray(game.platforms) && game.platforms.length > 0
+                      ? game.platforms.map(p => p.platform?.name || p.platform?.slug || '').filter(Boolean).join(', ')
+                      : 'N/A'}
+                  </Typography>
+                </Tooltip>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body1" sx={{ color: 'white' }}>
+                  <strong>ESRB Rating:</strong> {game.esrb_rating?.name || 'Rating Pending'}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body1" sx={{ color: 'white' }}>
+                  <strong>Average Rating:</strong> {game.rawg_rating ? `${game.rawg_rating}/5` : 'N/A'}
+                </Typography>
+              </Grid>
+              {/* <Grid item xs={12} sm={6}>
+                <Typography variant="body1" sx={{ color: 'white' }}>
+                  <strong>Reviews Count:</strong> {typeof game.reviews_count === 'number' ? game.reviews_count.toLocaleString() : 'N/A'}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body1" sx={{ color: 'white' }}>
+                  <strong>Average Playtime:</strong> {game.playtime ? `${game.playtime} hours` : 'N/A'}
+                </Typography>
+              </Grid> */}
             </Grid>
           </Box>
 

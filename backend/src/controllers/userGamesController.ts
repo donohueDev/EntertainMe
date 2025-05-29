@@ -1,26 +1,13 @@
 import { Request, Response } from 'express';
-import pool from "../config/database";
-
-interface UserGame {
-  game_id: number;
-  user_rating: number | null;
-  user_status: string | null;
-}
-
-interface Game {
-  id: number;
-  [key: string]: unknown; // For other game properties
-}
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+export default prisma;
 
 interface RatingRequest {
   username: string;
   gameId: number;
   rating: number;
   status: string;
-}
-
-interface UserRow {
-  id: number;
 }
 
 export const userGamesController = {
@@ -31,37 +18,24 @@ export const userGamesController = {
     console.log("User ID from params:", userId);
 
     try {
-      // Get user's games with their ratings and status
-      const userGamesResult = await pool.query(
-        'SELECT game_id, rating AS user_rating, status AS user_status FROM user_games WHERE user_id = $1',
-        [userId]
-      );
-      const userGames = userGamesResult.rows as UserGame[];
-      console.log("User's games:", userGames);
+      const userGames = await prisma.userGame.findMany({
+        where: {
+          userId: parseInt(userId)
+        },
+        include: {
+          game: true
+        }
+      });
 
       if (!userGames || userGames.length === 0) {
         return res.json([]);
       }
 
-      const gameIds = userGames.map((game: UserGame) => game.game_id);
-      console.log("Game IDs:", gameIds);
-
-      // Get game details for all user's games
-      const gamesResult = await pool.query(
-        'SELECT * FROM games WHERE id = ANY($1)',
-        [gameIds]
-      );
-      const games = gamesResult.rows as Game[];
-      console.log("Game details:", games);
-
-      const combinedGames = games.map((game: Game) => {
-        const userGame = userGames.find((ug: UserGame) => ug.game_id === game.id);
-        return {
-          ...game,
-          user_rating: userGame?.user_rating ?? null,
-          user_status: userGame?.user_status ?? null,
-        };
-      });
+      const combinedGames = userGames.map((userGame) => ({
+        ...userGame.game,
+        user_rating: userGame.rating,
+        user_status: userGame.status
+      }));
 
       res.status(200).json(combinedGames);
     } catch (error) {
@@ -76,41 +50,70 @@ export const userGamesController = {
     console.log("Request to /api/ratings");
 
     try {
-      // Get user ID from username
-      const userResult = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
-      const userRow = userResult.rows[0] as UserRow;
-      
-      if (!userRow) {
+      const user = await prisma.user.findUnique({
+        where: { username }
+      });
+      if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      const userId = userRow.id;
+      // Upsert the user's rating/status for the game
+      await prisma.userGame.upsert({
+        where: {
+          userId_gameId: {
+            userId: user.id,
+            gameId: gameId
+          }
+        },
+        update: {
+          rating,
+          status
+        },
+        create: {
+          userId: user.id,
+          gameId: gameId,
+          rating,
+          status
+        }
+      });
 
-      // Check if rating exists
-      const existingRatingResult = await pool.query(
-        'SELECT * FROM user_games WHERE user_id = $1 AND game_id = $2',
-        [userId, gameId]
-      );
-      const existingRating = existingRatingResult.rows[0];
-
-      if (existingRating) {
-        // Update existing rating
-        await pool.query(
-          `UPDATE user_games
-           SET rating = $1, status = $2
-           WHERE user_id = $3 AND game_id = $4`,
-          [rating, status, userId, gameId]
-        );
-        res.status(200).json({ message: 'Rating updated successfully' });
-      } else {
-        // Insert new rating
-        await pool.query(
-          `INSERT INTO user_games (user_id, game_id, rating, status)
-           VALUES ($1, $2, $3, $4)`,
-          [userId, gameId, rating, status]
-        );
-        res.status(200).json({ message: 'Rating submitted successfully' });
+      // Update aggregate fields in the Game table
+      // 1. Get all user ratings for this game
+      const allUserGames = await prisma.userGame.findMany({
+        where: { gameId },
+        select: { rating: true, status: true }
+      });
+      const ratingsArr = allUserGames.map(ug => ug.rating).filter(r => typeof r === 'number');
+      const ratingCount = ratingsArr.length;
+      const avgRating = ratingCount > 0 ? ratingsArr.reduce((a, b) => a + (b || 0), 0) / ratingCount : 0;
+      // 2. Build ratings breakdown (e.g., { '1': 2, '2': 5, ... })
+      const ratingsBreakdown: Record<string, number> = {};
+      for (const r of ratingsArr) {
+        if (typeof r === 'number') {
+          const key = r.toString();
+          ratingsBreakdown[key] = (ratingsBreakdown[key] || 0) + 1;
+        }
       }
+      // 3. Count added_by_status
+      const addedByStatus: Record<string, number> = {};
+      for (const ug of allUserGames) {
+        if (ug.status) {
+          addedByStatus[ug.status] = (addedByStatus[ug.status] || 0) + 1;
+        }
+      }
+      // 4. Update the Game table
+      await prisma.game.update({
+        where: { id: gameId },
+        data: {
+          rating: avgRating,
+          ratings_count: ratingCount,
+          ratings: ratingsBreakdown,
+          added: ratingCount, // or allUserGames.length
+          added_by_status: addedByStatus
+        }
+      });
+
+      res.status(200).json({ message: 'Rating submitted successfully' });
     } catch (error) {
       console.error('Error handling rating:', error);
       res.status(500).json({ message: 'Internal server error' });
@@ -121,20 +124,29 @@ export const userGamesController = {
   getUserGame: async (req: Request, res: Response) => {
     const { userId, gameId } = req.params;
     console.log("Request to /api/userGames/:userId/games/:gameId");
-    console.log("User ID:", userId, "Game ID:", gameId);
 
     try {
-      // Get user's game data
-      const result = await pool.query(
-        'SELECT rating AS user_rating, status AS user_status FROM user_games WHERE user_id = $1 AND game_id = $2',
-        [userId, gameId]
-      );
+      const userGame = await prisma.userGame.findUnique({
+        where: {
+          userId_gameId: {
+            userId: parseInt(userId),
+            gameId: parseInt(gameId)
+          }
+        },
+        select: {
+          rating: true,
+          status: true
+        }
+      });
 
-      if (result.rows.length === 0) {
+      if (!userGame) {
         return res.json({ user_rating: null, user_status: null });
       }
 
-      res.status(200).json(result.rows[0]);
+      res.status(200).json({
+        user_rating: userGame.rating,
+        user_status: userGame.status
+      });
     } catch (error) {
       console.error('Error retrieving game data for user:', error);
       res.status(500).json({ message: 'Internal server error' });
@@ -147,17 +159,52 @@ export const userGamesController = {
     console.log("Request to delete game from user's collection:", { userId, gameId });
 
     try {
-      const result = await pool.query(
-        'DELETE FROM user_games WHERE user_id = $1 AND game_id = $2 RETURNING *',
-        [userId, gameId]
-      );
+      await prisma.userGame.delete({
+        where: {
+          userId_gameId: {
+            userId: parseInt(userId),
+            gameId: parseInt(gameId)
+          }
+        }
+      });
 
-      if (result.rowCount === 0) {
-        return res.status(404).json({ message: 'Game not found in user collection' });
+      // Update aggregate fields in the Game table after removal
+      const allUserGames = await prisma.userGame.findMany({
+        where: { gameId: parseInt(gameId) },
+        select: { rating: true, status: true }
+      });
+      const ratingsArr = allUserGames.map(ug => ug.rating).filter(r => typeof r === 'number');
+      const ratingCount = ratingsArr.length;
+      const avgRating = ratingCount > 0 ? ratingsArr.reduce((a, b) => a + (b || 0), 0) / ratingCount : 0;
+      const ratingsBreakdown: Record<string, number> = {};
+      for (const r of ratingsArr) {
+        if (typeof r === 'number') {
+          const key = r.toString();
+          ratingsBreakdown[key] = (ratingsBreakdown[key] || 0) + 1;
+        }
       }
+      const addedByStatus: Record<string, number> = {};
+      for (const ug of allUserGames) {
+        if (ug.status) {
+          addedByStatus[ug.status] = (addedByStatus[ug.status] || 0) + 1;
+        }
+      }
+      await prisma.game.update({
+        where: { id: parseInt(gameId) },
+        data: {
+          rating: avgRating,
+          ratings_count: ratingCount,
+          ratings: ratingsBreakdown,
+          added: ratingCount,
+          added_by_status: addedByStatus
+        }
+      });
 
       res.status(200).json({ message: 'Game removed from collection successfully' });
     } catch (error) {
+      if (typeof error === 'object' && error !== null && 'code' in error && (error as any).code === 'P2025') {
+        return res.status(404).json({ message: 'Game not found in user collection' });
+      }
       console.error('Error removing game from collection:', error);
       res.status(500).json({ message: 'Internal server error' });
     }

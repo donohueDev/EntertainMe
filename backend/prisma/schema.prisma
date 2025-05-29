@@ -14,36 +14,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model gameCollection {
-  id                Int     @id @default(autoincrement())
-  slug              String
-  name              String
-  released          String?
-  tba               Boolean?
-  background_image  String?
-  rating            Float?
-  rating_top        Int?
-  ratings_count     Int?
-  reviews_text_count Int?
-  added             Int?
-  metacritic        Int?
-  playtime          Int?
-  suggestions_count Int?
-  updated           String?
-  reviews_count     Int?
-  saturated_color   String?
-  dominant_color    String?
-  esrb_rating       String?
-  description_raw   String?
-}
-
-model animeCollection {
-  mal_id             Int      @id
-  slug               String
-  url                String
-  title              String
-  title_english      String?
-  title_japanese     String?
+model Anime {
+  id                Int         @id @default(autoincrement())
+  mal_id            Int         @unique  // Changed to not be primary key
+  slug              String      @unique
+  title             String
+  title_english     String?
+  title_japanese    String?
   synopsis           String?
   background         String?
   type               String?
@@ -74,37 +51,169 @@ model animeCollection {
   image_url          String?
   image_large_url    String?
   image_small_url    String?
-  updated_at         DateTime @default(now())
+  updated_at         DateTime    @default(now())
+  userAnimes        UserAnime[] 
+
+  @@index([title])
 }
 
-model userCollection {
-  id         Int      @id @default(autoincrement())
-  email      String   @unique
-  username   String   @unique
+model Game {
+  id                Int           @id @default(autoincrement())
+  slug              String        @unique
+  name              String
+  released          DateTime?
+  tba               Boolean?
+  background_image  String?
+  metacritic        Int?
+  playtime          Int?
+  updated           DateTime?
+  esrb_rating_id    Int?
+  esrb_rating       EsrbRating?   @relation(fields: [esrb_rating_id], references: [id])
+  description_raw   String?
+  
+  // RAWG data
+  rawg_rating       Float?
+  
+  // Site statistics
+  rating       Float?    @default(0)
+  rating_top   Int       @default(0)
+  ratings_count Int      @default(0)
+  ratings      Json?     @default("{}")
+  reviews_count Int      @default(0)
+  added        Int       @default(0)
+  added_by_status   Json?     @default("{\"playing\":0,\"planned\":0,\"completed\":0,\"dropped\":0}")
+
+  
+  // Relationships
+  platforms         GamePlatform[]
+  tags             GameTag[]
+  userGames        UserGame[]
+  topGames         Top50Games[]
+  adultContent     AdultGame?
+
+  @@index([name])
+  @@index([esrb_rating_id])
+}
+
+model User {
+  id         Int        @id @default(autoincrement())
+  email      String     @unique
+  username   String     @unique
   password   String
-  created_at DateTime @default(now())
+  created_at DateTime   @default(now())
+  userGames  UserGame[]
+  userAnimes UserAnime[] // Add this line
+
+  @@index([username, email])
 }
 
-model userGameCollection {
-  id         Int      @id @default(autoincrement())
-  user_id    Int
-  game_id    Int
-  rating     Float?
-  status     String?
-  created_at DateTime @default(now())
-
-  @@unique([user_id, game_id])
-  @@index([user_id])
-  @@index([game_id])
+model UserGame {
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  game        Game     @relation(fields: [gameId], references: [id])
+  gameId      Int
+  rating      Int?
+  status      String?
+  created_at  DateTime @default(now())
+  
+  @@unique([userId, gameId])
+  @@index([rating])
 }
 
-model top50GameCollection {
+model UserAnime {
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  anime       Anime    @relation(fields: [animeId], references: [id])
+  animeId     Int
+  rating      Int?
+  status      String? 
+  created_at  DateTime @default(now())
+  
+  @@unique([userId, animeId])
+  @@index([rating])
+}
+
+model Top50Games {
   id         Int      @id @default(autoincrement())
   game_id    Int
   rank       Int
   value      Float?
   created_at DateTime @default(now())
+  game       Game     @relation(fields: [game_id], references: [id])
 
   @@unique([rank])
   @@index([game_id])
+}
+
+model Tag {
+  id         Int       @id @default(autoincrement())
+  name       String    @unique
+  slug       String    @unique
+  games      GameTag[]
+  created_at DateTime  @default(now())
+
+  @@index([slug])
+}
+
+model GameTag {
+  id         Int      @id @default(autoincrement())
+  game_id    Int
+  tag_id     Int
+  game       Game     @relation(fields: [game_id], references: [id])
+  tag        Tag      @relation(fields: [tag_id], references: [id])
+  created_at DateTime @default(now())
+
+  @@unique([game_id, tag_id])
+  @@index([game_id])
+  @@index([tag_id])
+}
+
+model AdultGame {
+  id                Int      @id @default(autoincrement())
+  game_id           Int      @unique
+  game              Game     @relation(fields: [game_id], references: [id])
+  reason            String   // general reason (adults-only-rating, explicit-content-tags, etc)
+  trigger_tag       String?  // specific tag that caused the content to be marked explicit
+  created_at        DateTime @default(now())
+
+  @@index([game_id])
+  @@index([trigger_tag])
+}
+
+model Platform {
+  id         Int           @id
+  slug       String       @unique
+  name       String
+  gamePlatforms GamePlatform[]
+  created_at DateTime     @default(now())
+
+  @@index([slug])
+}
+
+model GamePlatform {
+  id            Int      @id @default(autoincrement())
+  game_id       Int
+  platform_id   Int
+  released_at   String?
+  requirements_min String?
+  requirements_rec String?
+  game          Game     @relation(fields: [game_id], references: [id])
+  platform      Platform @relation(fields: [platform_id], references: [id])
+  created_at    DateTime @default(now())
+
+  @@unique([game_id, platform_id])
+  @@index([game_id])
+  @@index([platform_id])
+}
+
+model EsrbRating {
+  id         Int      @id
+  slug       String   @unique
+  name       String
+  games      Game[]
+  created_at DateTime @default(now())
+
+  @@index([slug])
 }
