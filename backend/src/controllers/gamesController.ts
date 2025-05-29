@@ -694,7 +694,8 @@ export const gamesController = {
       // Insert top games into the database
       const topGameInserts = topGames.map((game, index) => ({
         rank: index + 1,
-        game_id: game.id
+        game_id: game.id,
+        value: game.combinedScore // Store the combined score in the value field
       }));
       await prisma.top50Games.createMany({ data: topGameInserts });
       console.log('Inserted top 50 games into database');
