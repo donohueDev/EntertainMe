@@ -66,7 +66,8 @@ const AccountDashboard = () => {
   const {
     userContentData: userGames,
     loading: gamesLoading,
-    error: gamesError
+    error: gamesError,
+    invalidateCache: invalidateGamesCache,
   } = useFetchUserContentData({
     isAuthenticated,
     getUserInfo,
@@ -78,7 +79,8 @@ const AccountDashboard = () => {
   const {
     userContentData: userAnime,
     loading: animeLoading,
-    error: animeError
+    error: animeError,
+    invalidateCache: invalidateAnimeCache,
   } = useFetchUserContentData({
     isAuthenticated,
     getUserInfo,
@@ -92,20 +94,38 @@ const AccountDashboard = () => {
   useEffect(() => {
     if (userGames && Array.isArray(userGames)) {
       setGames(userGames);
-      setFilteredGames(userGames);
+      // Also update filtered games when userGames change
+      if (statusFilter === 'all') {
+        setFilteredGames(userGames);
+      } else {
+        setFilteredGames(userGames.filter(game =>
+          game.user_status?.toLowerCase() === statusFilter.toLowerCase()
+        ));
+      }
     }
-    setLoading(gamesLoading);
-    setError(gamesError);
-  }, [userGames, gamesLoading, gamesError]);
+    // Remove setLoading and setError from here as they are handled by individual hook results
+  }, [userGames, statusFilter]); // Depend on userGames and statusFilter
 
   useEffect(() => {
     if (userAnime && Array.isArray(userAnime)) {
       setAnime(userAnime);
-      setFilteredAnime(userAnime);
+      // Also update filtered anime when userAnime change
+      if (animeStatusFilter === 'all') {
+        setFilteredAnime(userAnime);
+      } else {
+        setFilteredAnime(userAnime.filter(anime =>
+          anime.user_status?.toLowerCase() === animeStatusFilter.toLowerCase()
+        ));
+      }
     }
-    setLoading(animeLoading);
-    setError(animeError);
-  }, [userAnime, animeLoading, animeError]);
+    // Remove setLoading and setError from here
+  }, [userAnime, animeStatusFilter]); // Depend on userAnime and animeStatusFilter
+
+  // Consolidate loading and error based on individual hook states
+  useEffect(() => {
+    setLoading(gamesLoading || animeLoading);
+    setError(gamesError || animeError);
+  }, [gamesLoading, animeLoading, gamesError, animeError]);
 
   // Filter games based on status
   const handleStatusFilterChange = (event) => {
@@ -219,6 +239,8 @@ const AccountDashboard = () => {
             : game
         )
       );
+      // Invalidate the games cache after successful save
+      invalidateGamesCache(id);
     } else if (type === 'anime') {
       setAnime(prevAnime =>
         prevAnime.map(animeItem =>
@@ -234,6 +256,8 @@ const AccountDashboard = () => {
             : animeItem
         )
       );
+      // Invalidate the anime cache after successful save
+      invalidateAnimeCache(id);
     }
   };
 

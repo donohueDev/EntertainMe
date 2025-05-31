@@ -84,6 +84,31 @@ export const userContentController = {
         }
       });
 
+      // After upserting the userGame entry, update the user's aggregate counts
+      const [gameReviewsCount, animeReviewsCount] = await Promise.all([
+        prisma.userGame.count({
+          where: {
+            userId: user.id,
+            rating: { not: null }
+          }
+        }),
+        prisma.userAnime.count({
+          where: {
+            userId: user.id,
+            rating: { not: null }
+          }
+        })
+      ]);
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          game_reviews_count: gameReviewsCount,
+          anime_reviews_count: animeReviewsCount,
+          total_reviews_count: gameReviewsCount + animeReviewsCount
+        }
+      });
+
       // Update aggregate fields in the Game table
       // 1. Get all user ratings for this game
       const allUserGames = await prisma.userGame.findMany({
@@ -278,6 +303,31 @@ export const userContentController = {
           animeId: animeId,
           rating,
           status
+        }
+      });
+
+      // After upserting the userAnime entry, update the user's aggregate counts
+      const [gameReviewsCount, animeReviewsCount] = await Promise.all([
+        prisma.userGame.count({
+          where: {
+            userId: user.id,
+            rating: { not: null }
+          }
+        }),
+        prisma.userAnime.count({
+          where: {
+            userId: user.id,
+            rating: { not: null }
+          }
+        })
+      ]);
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          game_reviews_count: gameReviewsCount,
+          anime_reviews_count: animeReviewsCount,
+          total_reviews_count: gameReviewsCount + animeReviewsCount
         }
       });
 
