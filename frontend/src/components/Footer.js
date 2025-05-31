@@ -5,11 +5,12 @@ const Footer = () => {
   return (
     <Box
       component="footer"
+      // Footer will be at very bottom of page with padding above it
       sx={{
         py: 3,
         px: 2,
-        mt: 'auto',
-        backgroundColor: '#1A1A1A',
+        mt: 'auto', // This pushes the footer to the bottom
+        backgroundColor: 'transparent',
         borderTop: '1px solid #333',
         width: '100%',
         display: 'flex',

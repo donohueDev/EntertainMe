@@ -388,11 +388,15 @@ const HomePage = () => {
       minHeight: '100vh',
       backgroundColor: '#0A1929',
     }}>
-    <Container maxWidth="xl" sx={{ 
-      py: 0,
-      flex: '1 0 auto',
+    <Container 
+      maxWidth="xl" 
+      sx={{ 
+        py: 4,
+        flex: 1,
       color: '#E0E0E0',
-      display: 'block',
+        display: 'flex',
+        flexDirection: 'column',
+        mb: 0,
     }}>
 
       <Title />
@@ -481,7 +485,7 @@ const HomePage = () => {
         items={games}
         renderCard={renderGameCard}
         title="Top 100 Games"
-        sx={{ mb: 6 }} // Add margin bottom for spacing below game cards
+        sx={{ mb: 4 }}
       />
 
       {/* Top 50 Anime Section */}
@@ -490,6 +494,7 @@ const HomePage = () => {
         items={anime}
         renderCard={renderAnimeCard}
         title="Top 100 Anime"
+        sx={{ mb: 4 }}
       />
     </Container>
     <Footer />
