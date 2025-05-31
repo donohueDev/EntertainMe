@@ -78,7 +78,7 @@ app.use('/api/games', RAWGGamesRouter);
 app.use('/api/userGames', userGames);
 app.use('/api/accounts', accountRouter);
 app.use('/api/anime', animeRouter);
-app.use('/api/userAnime', userAnime);
+app.use('/api/userAnimes', userAnime);
 // app.use('/api/search', searchRouter);
 // app.use('/api/movies', moviesRouter);
 // app.use('/api/shows', showsRouter);

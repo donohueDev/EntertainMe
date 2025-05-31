@@ -10,9 +10,9 @@ router.get('/:userId/anime', userContentController.getUserAnimes);
 router.post('/ratings', userContentController.submitAnimeRating);
 
 // Get a specific anime's data for a user (reuse getUserGame for anime, or implement getUserAnime if needed)
-router.get('/:userId/anime/:animeId', userContentController.getUserGame);
+router.get('/:userId/anime/:animeId', userContentController.getUserAnime);
 
 // Delete an anime from user's collection (reuse deleteUserGame for anime, or implement deleteUserAnime if needed)
-router.delete('/:userId/anime/:animeId', userContentController.deleteUserGame);
+router.delete('/:userId/anime/:animeId', userContentController.deleteUserAnime);
 
 export default router;

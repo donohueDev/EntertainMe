@@ -23,11 +23,12 @@ const useFetchUserContentData = ({ isAuthenticated, getUserInfo, contentId, cont
       const userInfo = await getUserInfo();
       if (!userInfo?.userId) throw new Error('User information not found');
       let url;
+      console.log(`Fetching user content data for type: ${contentType}, ID: ${contentId}`);
       if (contentId) {
         // Fetch a specific content item for the user
         const routeMap = {
           games: `/api/userGames/${userInfo.userId}/games/${contentId}`,
-          anime: `/api/userAnime/${userInfo.userId}/anime/${contentId}`,
+          anime: `/api/userAnimes/${userInfo.userId}/anime/${contentId}`,
           movies: `/api/userMovies/${userInfo.userId}/movies/${contentId}`,
         };
         url = routeMap[contentType];
@@ -36,7 +37,7 @@ const useFetchUserContentData = ({ isAuthenticated, getUserInfo, contentId, cont
         // Fetch all content of this type for the user
         const routeMap = {
           games: `/api/userGames/${userInfo.userId}/games`,
-          anime: `/api/userAnime/${userInfo.userId}/anime`,
+          anime: `/api/userAnimes/${userInfo.userId}/anime`,
           movies: `/api/userMovies/${userInfo.userId}/movies`,
         };
         url = routeMap[contentType];

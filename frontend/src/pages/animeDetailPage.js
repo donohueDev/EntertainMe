@@ -91,11 +91,26 @@ const AnimeDetailPage = () => {
   if (!anime) return <div>Loading...</div>;
 
   const trailerEmbedUrl = anime.trailer?.embed_url;
+
+  // Get YouTube video ID from embed URL
+  const getYouTubeVideoId = (embedUrl) => {
+    if (!embedUrl) return null;
+    const match = embedUrl.match(/embed\/([^?/]+)/);
+    return match ? match[1] : null;
+  };
+
+  // Get YouTube thumbnail URL
+  const getYouTubeThumbnailUrl = (videoId) => {
+    if (!videoId) return null;
+    // Try maxresdefault first (highest quality)
+    return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+  };
+
+  const videoId = getYouTubeVideoId(trailerEmbedUrl);
+  const youtubeThumbnail = getYouTubeThumbnailUrl(videoId);
+
   const posterImg =
-    (anime.trailer?.images?.maximum_image_url &&
-      !anime.trailer?.images?.maximum_image_url.endsWith('maxresdefault.jpg')
-      ? anime.trailer?.images?.maximum_image_url
-      : null) ||
+    youtubeThumbnail ||
     (anime.images?.webp?.large_image_url ||
       anime.images?.jpg?.large_image_url ||
       '/placeholder-image.jpg');
@@ -108,9 +123,11 @@ const AnimeDetailPage = () => {
           {showTrailer && trailerEmbedUrl ? (
     <CardMedia
       component="iframe"
-      src={trailerEmbedUrl}
+      src={`${trailerEmbedUrl}?enablejsapi=0&controls=1`}
       allow="autoplay; encrypted-media"
       allowFullScreen
+      loading="lazy"
+      sandbox="allow-same-origin allow-scripts allow-forms allow-presentation"
               sx={{ width: '100%', height: '100%', border: 0 }}
     />
   ) : (
@@ -235,8 +252,9 @@ const AnimeDetailPage = () => {
                         d && d.year ? `${d.year}/${d.month?.toString().padStart(2, '0') ?? '??'}/${d.day?.toString().padStart(2, '0') ?? '??'}` : null;
                       const fromStr = formatDate(from);
                       const toStr = formatDate(to);
+                      const isCurrentlyAiring = anime.status === 'Currently Airing';
                       if (fromStr && toStr) return `${fromStr} - ${toStr}`;
-                      if (fromStr) return `${fromStr} to ?`;
+                      if (fromStr) return `${fromStr} - ${isCurrentlyAiring ? 'Present' : '?'}`;
                       return 'N/A';
                     })()
                   }

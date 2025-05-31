@@ -45,7 +45,7 @@ const useHandleRating = ({ contentType, contentId, getUserContentData, usernameF
       if (contentType === 'game' || contentType === 'games') {
         route = `${API_BASE_URL}/api/userGames/ratings`;
       } else if (contentType === 'anime') {
-        route = `${API_BASE_URL}/api/userAnime/ratings`;
+        route = `${API_BASE_URL}/api/userAnimes/ratings`;
       } else if (contentType === 'movie' || contentType === 'movies') {
         route = `${API_BASE_URL}/api/userMovies/ratings`;
       } else {

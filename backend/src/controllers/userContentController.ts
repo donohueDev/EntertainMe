@@ -226,7 +226,7 @@ export const userContentController = {
     try {
       const userAnime = await prisma.userAnime.findMany({
         where: { userId: parseInt(userId) },
-        select: {
+        include: {
           anime: true,
         }
       });
@@ -236,9 +236,9 @@ export const userContentController = {
       }
 
       const combinedAnime = userAnime.map((userAnimeEntry) => ({
-        animeId: userAnimeEntry.anime.id,
-        user_rating: userAnimeEntry.anime.rating,
-        user_status: userAnimeEntry.anime.status
+        ...userAnimeEntry.anime,
+        user_rating: userAnimeEntry.rating,
+        user_status: userAnimeEntry.status
       }));
 
       res.status(200).json(combinedAnime);
@@ -324,4 +324,92 @@ export const userContentController = {
       res.status(500).json({ message: 'Internal server error' });
     }
   },
+  getUserAnime: async (req: Request, res: Response) => {
+    const { userId, animeId } = req.params;
+    console.log("Request to /api/userAnime/:userId/anime/:animeId");
+
+    try {
+      const userAnime = await prisma.userAnime.findUnique({
+        where: {
+          userId_animeId: {
+            userId: parseInt(userId),
+            animeId: parseInt(animeId)
+          }
+        },
+        select: {
+          rating: true,
+          status: true
+        }
+      });
+
+      if (!userAnime) {
+        return res.json({ user_rating: null, user_status: null });
+      }
+
+      res.status(200).json({
+        user_rating: userAnime.rating,
+        user_status: userAnime.status
+      });
+
+      console.log("User anime data retrieved successfully:", userAnime);
+    } catch (error) {
+      console.error('Error retrieving anime data for user:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+  deleteUserAnime: async (req: Request, res: Response) => {
+    const { userId, animeId } = req.params;
+    console.log("Request to delete anime from user's collection:", { userId, animeId });
+    try {
+      await prisma.userAnime.delete({
+        where: {
+          userId_animeId: {
+            userId: parseInt(userId),
+            animeId: parseInt(animeId)
+          }
+        }
+      });
+
+      // Update aggregate fields in the Anime table after removal
+      const allUserAnimes = await prisma.userAnime.findMany({
+        where: { animeId: parseInt(animeId) },
+        select: { rating: true, status: true }
+      });
+      const ratingsArr = allUserAnimes.map(ua => ua.rating).filter(r => typeof r === 'number');
+      const ratingCount = ratingsArr.length;
+      const avgRating = ratingCount > 0 ? ratingsArr.reduce((a, b) => a + (b || 0), 0) / ratingCount : 0;
+      const ratingsBreakdown: Record<string, number> = {};
+      for (const r of ratingsArr) {
+        if (typeof r === 'number') {
+          const key = r.toString();
+          ratingsBreakdown[key] = (ratingsBreakdown[key] || 0) + 1;
+        }
+      }
+      const addedByStatus: Record<string, number> = {};
+      for (const ua of allUserAnimes) {
+        if (ua.status) {
+          addedByStatus[ua.status] = (addedByStatus[ua.status] || 0) + 1;
+        }
+      }
+      await prisma.anime.update({
+        where: { id: parseInt(animeId) },
+        data: {
+          site_rating: avgRating,
+          site_ratings_count: ratingCount,
+          site_ratings: ratingsBreakdown,
+          site_reviews_count: 0, // update if/when you add reviews
+          site_added: ratingCount,
+          site_added_by_status: addedByStatus
+        }
+      });
+
+      res.status(200).json({ message: 'Anime removed from collection successfully' });
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'code' in error && (error as any).code === 'P2025') {
+        return res.status(404).json({ message: 'Anime not found in user collection' });
+      }
+      console.error('Error removing anime from collection:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }
 };
