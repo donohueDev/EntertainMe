@@ -205,8 +205,15 @@ const processAnimeData = async (anime: any): Promise<boolean> => {
     try {
         // Accept either id or mal_id for compatibility with Jikan API
         const animeId = anime.id || anime.mal_id;
-        const animeSlug = anime.slug || anime.title?.toLowerCase().replace(/[^a-zA-Z0-9]+/g, '-');
+        // Create a unique slug by appending the MAL ID
+        const baseSlug = anime.slug || anime.title?.toLowerCase().replace(/[^a-zA-Z0-9]+/g, '-');
+        const animeSlug = `${baseSlug}-${animeId}`;
         const animeTitle = anime.title;
+        
+        // Set api source fields first
+        anime.api_source = 'jikan';
+        anime.api_source_id = animeId?.toString() || '';
+
         if (!animeId || !animeSlug || !animeTitle) {
             console.error('Skipping invalid anime data:', anime);
             return false;
@@ -304,20 +311,87 @@ export const animeController = {
     // Load anime data from the API and insert into the database
     loadAnimeFromApi: async (_req: Request, res: Response) => {
         try {
-            // Fetch anime data from the API
-            const { data: animeList } = await axios.get<{ data: Anime[] }>('https://api.jikan.moe/v4/anime');
+            let page = 1;
+            const pageSize = 25; // Jikan API recommended page size
+            let totalAnimeInserted = 0;
+            let duplicatesSkipped = 0;
+            const targetAnime = 500;
+            const maxRetries = 3;
+            const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-            if (!animeList || !animeList.data || animeList.data.length === 0) {
-                return res.status(404).json({ message: 'No anime data found.' });
+            console.log(`Starting to fetch anime from Jikan API... Target: ${targetAnime} anime`);
+
+            while (totalAnimeInserted < targetAnime) {
+                let retryCount = 0;
+                let success = false;
+
+                while (retryCount < maxRetries && !success) {
+                    try {
+                        const response = await axios.get<{ data: Anime[] }>('https://api.jikan.moe/v4/anime', {
+                            params: {
+                                page,
+                                limit: pageSize,
+                                order_by: 'members',
+                                sort: 'desc'
+                            }
+                        });
+
+                        if (!response.data.data || response.data.data.length === 0) {
+                            console.log('No more anime data available');
+                            break;
+                        }
+
+                        for (const anime of response.data.data) {
+                            if (totalAnimeInserted >= targetAnime) break;
+                            
+                            // Add required fields before checking duplicates
+                            const animeWithSource = {
+                                ...anime,
+                                api_source: 'jikan',
+                                api_source_id: (anime.mal_id || anime.id)?.toString() || ''
+                            };
+                            
+                            if (await isDuplicateAnime(animeWithSource)) {
+                                duplicatesSkipped++;
+                                continue;
+                            }
+
+                            const success = await processAnimeData(anime);
+                            if (success) {
+                                totalAnimeInserted++;
+                                console.log(`Processed ${totalAnimeInserted}/${targetAnime} anime`);
+                            }
+                        }
+
+                        success = true;
+                    } catch (error) {
+                        retryCount++;
+                        console.error(`Attempt ${retryCount} failed:`, error);
+                        if (retryCount < maxRetries) {
+                            console.log(`Retrying in 5 seconds...`);
+                            await delay(5000); // Longer delay for Jikan API rate limits
+                        }
+                    }
+                }
+
+                if (!success) {
+                    console.error(`Failed to fetch anime after ${maxRetries} attempts`);
+                    break;
+                }
+
+                if (totalAnimeInserted >= targetAnime) {
+                    break;
+                }
+
+                page++;
+                await delay(1000); // Respect Jikan API rate limits
             }
 
-            // Process each anime and insert into the database
-            const results = await Promise.all(animeList.data.map(processAnimeData));
-
-            // Filter out any failed insertions
-            const successfulInserts = results.filter(result => result);
-
-            return res.status(200).json({ message: `${successfulInserts.length} anime processed successfully.` });
+            return res.status(200).json({ 
+                message: `Successfully inserted ${totalAnimeInserted} anime!`,
+                totalAnime: totalAnimeInserted,
+                duplicatesSkipped
+            });
         } catch (error) {
             console.error('Error loading anime from API:', error);
             return res.status(500).json({ message: 'Internal server error.' });

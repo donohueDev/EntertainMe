@@ -303,7 +303,7 @@ export const gamesController = {
       const pageSize = 40;
       let totalGamesInserted = 0;
       let duplicatesSkipped = 0;
-      const targetGames = 100;
+      const targetGames = 500;
       const maxRetries = 3;
       const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
       
