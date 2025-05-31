@@ -66,19 +66,21 @@ const HorizontalScroller = ({
           ref={scrollContainerRef}
           sx={{
             display: 'grid',
-            gridAutoFlow: 'column',
-            gridTemplateRows: `repeat(${rows}, 1fr)`,
+            gridAutoFlow: 'column dense',
+            gridTemplateRows: `repeat(${rows}, auto)`,
+            gridAutoColumns: 'min-content',
             overflowX: 'auto',
-            overflowY: 'auto',
+            overflowY: 'hidden',
             gap: 3,
             py: 1,
             px: 2,
             '&::-webkit-scrollbar': { display: 'none' },
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
-            height: 'auto',
             scrollBehavior: 'smooth',
-            flexGrow: 1
+            flexGrow: 1,
+            minHeight: height,
+            alignItems: 'start',
           }}
         >
           {items.map((item, idx) =>
