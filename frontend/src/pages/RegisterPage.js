@@ -70,9 +70,12 @@ const RegisterPage = () => {
 
         // Add a small delay to ensure state is updated
         setTimeout(() => {
-          // Navigate to the Account Dashboard with username
+          // Navigate to the Profile page to complete setup
           const userInfo = JSON.parse(atob(response.data.token.split('.')[1]));
-          navigate(`/user/${userInfo.username}/dashboard`, { replace: true });
+          navigate(`/user/${userInfo.username}/profile`, { 
+            replace: true,
+            state: { isNewUser: true }
+          });
         }, 100);
       } else {
         setErrorMessage('Registration failed. Please try again.');

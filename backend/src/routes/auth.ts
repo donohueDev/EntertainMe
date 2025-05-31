@@ -1,15 +1,14 @@
 import express from 'express';
 import { authController } from '../controllers/authController';
+import { authenticateUser } from '../middleware/auth';
 
 const router = express.Router();
 
-// Register endpoint
+// Public routes
 router.post('/register', authController.register);
-
-// Login endpoint
 router.post('/login', authController.login);
 
 // Protected route to get current user
-router.get('/me', authController.getCurrentUser);
+router.get('/me', authenticateUser, authController.getCurrentUser);
 
 export { router as accountRouter };

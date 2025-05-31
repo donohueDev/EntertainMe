@@ -82,7 +82,8 @@ export const UserProvider = ({ children }) => {
       const decoded = jwtDecode(token);
       return {
         userId: decoded.userId,
-        username: decoded.username
+        username: decoded.username,
+        token: token  // Include the token in the returned object
       };
     } catch (error) {
       console.error('Error getting user info:', error);

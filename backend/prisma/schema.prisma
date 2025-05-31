@@ -138,8 +138,41 @@ model User {
   username   String     @unique
   password   String
   created_at DateTime   @default(now())
+  
+  // Profile data
+  display_name      String?
+  avatar_url        String?
+  bio               String?
+  location          String?
+  website           String?
+  last_login        DateTime?
+  last_activity     DateTime?
+  is_active         Boolean    @default(true)
+  login_count       Int        @default(0)
+  
+  // Preferences and settings
+  preferences       Json?      @default("{}")
+  content_filters   Json?      @default("{}")
+  
+  // Review counts
+  anime_reviews_count Int @default(0)
+  game_reviews_count  Int @default(0)
+  total_reviews_count Int @default(0)
+  
+  // List statistics
+  watching_anime_count  Int   @default(0)
+  completed_anime_count Int   @default(0)
+  planned_anime_count   Int   @default(0)
+  dropped_anime_count   Int   @default(0)
+  
+  playing_games_count   Int   @default(0)
+  completed_games_count Int   @default(0)
+  planned_games_count   Int   @default(0)
+  dropped_games_count   Int   @default(0)
+  
+  // Relations
   userGames  UserGame[]
-  userAnimes UserAnime[] // Add this line
+  userAnimes UserAnime[]
 
   @@index([username, email])
 }

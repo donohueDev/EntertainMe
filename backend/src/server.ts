@@ -8,6 +8,7 @@ import { accountRouter } from './routes/auth';
 import userGames from './routes/userGames';
 import userAnime from './routes/userAnime';
 import animeRouter from './routes/anime';
+import profileRouter from './routes/profile';
 // import searchRouter from '../routes/search';
 // import moviesRouter from '../routes/movies';
 // import showsRouter from '../routes/shows';
@@ -50,7 +51,7 @@ app.use(
       if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   })
@@ -79,6 +80,7 @@ app.use('/api/userGames', userGames);
 app.use('/api/accounts', accountRouter);
 app.use('/api/anime', animeRouter);
 app.use('/api/userAnimes', userAnime);
+app.use('/api/profile', profileRouter);
 // app.use('/api/search', searchRouter);
 // app.use('/api/movies', moviesRouter);
 // app.use('/api/shows', showsRouter);

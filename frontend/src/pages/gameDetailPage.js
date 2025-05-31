@@ -18,9 +18,8 @@ import {
 } from '@mui/material';
 import Tooltip from '@mui/material/Tooltip';
 import ReviewBox from '../components/ReviewBox';
-import useHandleRating from '../hooks/useHandleRating';
 import useFetchDetails from '../hooks/useFetchDetails';
-import useFetchUserContentData from '../hooks/useFetchUserContentData';
+import useUserContentRating from '../hooks/useUserContentRating';
 import LoginPromptBox from '../components/LoginPromptBox';
 
 // Utility function to format date strings
@@ -38,10 +37,8 @@ const formatDate = (dateString) => {
 const GameDetailPage = () => {
   const location = useLocation();
   const initialGame = location.state?.game;
-  const [rating, setRating] = useState(0);
-  const [status, setStatus] = useState('');
   const [success, setSuccess] = useState(false);
-  const { isAuthenticated, getUserInfo } = useUser();
+  const { isAuthenticated } = useUser();
 
   // Fetch game details using custom hook
   const {
@@ -53,39 +50,29 @@ const GameDetailPage = () => {
     { initialData: initialGame, dependencies: [initialGame?.slug] }
   );
 
+  // Use the new hook for rating management
   const {
-    handleRating: handleRatingHook,
+    rating,
+    setRating,
+    status,
+    setStatus,
+    userContentData: userGameData,
     loading: ratingLoading,
     error: ratingError,
     setError: setRatingError,
     success: ratingSuccess,
-    setSuccess: setRatingSuccess
-  } = useHandleRating({
-    contentType: 'game',
-    contentId: game?.id,
-    getUserContentData: undefined, // Optionally pass fetchUserGameData if you want to refresh after rating
-    usernameField: 'username',
-    idField: 'gameId'
+    setSuccess: setRatingSuccess,
+    submitRating,
+    updateUserContentState
+  } = useUserContentRating({
+    contentType: 'games',
+    contentId: game?.id
   });
 
-  // User-specific game data
-  const {
-    userContentData: userGameData,
-    setUserContentData: setUserGameData
-  } = useFetchUserContentData({
-    isAuthenticated,
-    getUserInfo,
-    contentId: game?.id,
-    contentType: 'games'
-  });
-
-  // Set rating and status from userGameData
+  // Update state when user data changes
   useEffect(() => {
-    if (userGameData) {
-      setRating(userGameData.user_rating || 0);
-      setStatus(userGameData.user_status || '');
-    }
-  }, [userGameData]);
+    updateUserContentState();
+  }, [updateUserContentState]);
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -225,7 +212,7 @@ const GameDetailPage = () => {
                 rating={rating}
                 setRating={setRating}
                 loading={ratingLoading}
-                onSubmit={() => handleRatingHook({ rating, status, setUserContentData: setUserGameData })}
+                onSubmit={submitRating}
                 error={ratingError}
                 setError={setRatingError}
                 success={ratingSuccess}

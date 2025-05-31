@@ -61,17 +61,27 @@ export const authController = {
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-      // Create new user
+      // Create new user with initial values
       const newUser = await prisma.user.create({
         data: {
           email,
           username,
           password: hashedPassword,
+          display_name: username, // Initially set display name to username
+          last_login: new Date(),
+          last_activity: new Date(),
+          is_active: true,
+          login_count: 1,
+          preferences: {},
+          content_filters: {},
         },
         select: {
           id: true,
           email: true,
           username: true,
+          display_name: true,
+          avatar_url: true,
+          preferences: true,
         },
       });
 
@@ -107,6 +117,17 @@ export const authController = {
             { username: username },
             { email: username }
           ]
+        },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          password: true,
+          display_name: true,
+          avatar_url: true,
+          preferences: true,
+          last_login: true,
+          last_activity: true
         }
       });
 
@@ -119,17 +140,30 @@ export const authController = {
         return res.status(400).json({ message: 'Invalid credentials' });
       }
 
+      // Update last_login and last_activity
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          last_login: new Date(),
+          last_activity: new Date(),
+          login_count: {
+            increment: 1
+          }
+        }
+      });
+
       const token = jwt.sign(
         { userId: user.id, username: user.username },
         JWT_SECRET,
         { expiresIn: '1h' }
       );
 
+      const { password: _, ...userWithoutPassword } = user;
+      
       return res.json({
+        message: 'Login successful',
         token,
-        userId: user.id,
-        username: user.username,
-        email: user.email
+        user: userWithoutPassword
       });
     } catch (error) {
       console.error('Login failed:', error);
@@ -138,29 +172,11 @@ export const authController = {
   },
 
   getCurrentUser: async (req: Request, res: Response) => {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Authorization header missing or malformed' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.userId },
-        select: { id: true, username: true }
-      });
-
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      return res.json({ userId: user.id, username: user.username });
-    } catch (error) {
-      console.error('Token verification failed:', error);
-      return res.status(401).json({ message: 'Invalid or expired token' });
-    }
+    // The authenticateUser middleware will have already verified the token
+    // and attached the user to req.user
+    return res.json({ 
+      userId: req.user?.id, 
+      username: req.user?.username 
+    });
   }
 };

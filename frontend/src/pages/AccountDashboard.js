@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/userContext';
-import useFetchUserContentData from '../hooks/useFetchUserContentData';
+import useFetchUserContentData, { invalidateUserDataCache } from '../hooks/useFetchUserContentData';
 import API_BASE_URL from '../config';
 import axios from 'axios';
 import {
@@ -25,18 +25,19 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
 } from '@mui/material';
 import Rating from '@mui/material/Rating';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import EditContentDialog from '../components/EditContentDialog';
+import Footer from '../components/Footer';
 
 const AccountDashboard = () => {
   const [games, setGames] = useState([]);
   const [anime, setAnime] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
 
   const [filteredGames, setFilteredGames] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -46,8 +47,21 @@ const AccountDashboard = () => {
   const [gameToDelete, setGameToDelete] = useState(null);
   const [animeToDelete, setAnimeToDelete] = useState(null);
 
+  // Add state for the new Edit Content Dialog
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [contentItemToEdit, setContentItemToEdit] = useState(null);
+
   // Content type dropdown state
   const [contentType, setContentType] = useState('games');
+
+  // Reset filter when content type changes
+  useEffect(() => {
+    if (contentType === 'games') {
+      setAnimeStatusFilter('all');
+    } else {
+      setStatusFilter('all');
+    }
+  }, [contentType]);
 
   // Use the reusable hook to fetch user's games
   const {
@@ -141,6 +155,8 @@ const AccountDashboard = () => {
     try {
       const userInfo = getUserInfo();
       await axios.delete(`${API_BASE_URL}/api/userGames/${userInfo.userId}/games/${gameToDelete.id}`);
+      // Invalidate both specific game cache and all games cache
+      invalidateUserDataCache(userInfo.userId, 'games', gameToDelete.id);
       setGames(games.filter(g => g.id !== gameToDelete.id));
       setFilteredGames(filteredGames.filter(g => g.id !== gameToDelete.id));
       setDeleteDialogOpen(false);
@@ -153,7 +169,9 @@ const AccountDashboard = () => {
 
   const handleUpdateClick = (game, event) => {
     event.stopPropagation(); // Prevent card click
-    handleGameClick(game);
+    // Use the new state and open the new dialog
+    setContentItemToEdit({ ...game, type: 'game' });
+    setIsEditDialogOpen(true);
   };
 
   const handleAnimeDelete = (anime, event) => {
@@ -166,6 +184,8 @@ const AccountDashboard = () => {
     try {
       const userInfo = getUserInfo();
       await axios.delete(`${API_BASE_URL}/api/userAnimes/${userInfo.userId}/anime/${animeToDelete.id}`);
+      // Invalidate both specific anime cache and all anime cache
+      invalidateUserDataCache(userInfo.userId, 'anime', animeToDelete.id);
       setAnime(anime.filter(a => a.id !== animeToDelete.id));
       setFilteredAnime(filteredAnime.filter(a => a.id !== animeToDelete.id));
       setDeleteDialogOpen(false);
@@ -178,7 +198,44 @@ const AccountDashboard = () => {
 
   const handleAnimeUpdate = (anime, event) => {
     event.stopPropagation(); // Prevent card click
-    navigate(`/anime/${anime.slug}`, { state: { anime } });
+    // Use the new state and open the new dialog
+    setContentItemToEdit({ ...anime, type: 'anime' });
+    setIsEditDialogOpen(true);
+  };
+
+  // New handler for when the edit dialog successfully saves
+  const handleEditSaveSuccess = (type, id, newStatus, newRating) => {
+    if (type === 'game') {
+      setGames(prevGames =>
+        prevGames.map(game =>
+          game.id === id
+            ? { ...game, user_status: newStatus, user_rating: newRating }
+            : game
+        )
+      );
+      setFilteredGames(prevFilteredGames =>
+        prevFilteredGames.map(game =>
+          game.id === id
+            ? { ...game, user_status: newStatus, user_rating: newRating }
+            : game
+        )
+      );
+    } else if (type === 'anime') {
+      setAnime(prevAnime =>
+        prevAnime.map(animeItem =>
+          animeItem.id === id
+            ? { ...animeItem, user_status: newStatus, user_rating: newRating }
+            : animeItem
+        )
+      );
+      setFilteredAnime(prevFilteredAnime =>
+        prevFilteredAnime.map(animeItem =>
+          animeItem.id === id
+            ? { ...animeItem, user_status: newStatus, user_rating: newRating }
+            : animeItem
+        )
+      );
+    }
   };
 
   // If loading, show loading spinner
@@ -217,67 +274,9 @@ const AccountDashboard = () => {
 
   const userInfo = getUserInfo();
 
-  // If no games or anime in collection, show message
-  if ((games.length === 0 && (!userAnime || userAnime.length === 0)) || (filteredGames.length === 0 && filteredAnime.length === 0)) {
-    const categoryMessage = statusFilter !== 'all' 
-      ? `You haven't added any games to your ${statusFilter.toLowerCase()} collection yet`
-      : "You haven't added any games to your collection yet";
-
-    return (
-      <Container>
-        <Box mt={4}>
-          <Typography variant="h4" gutterBottom>
-            Welcome, {userInfo?.username}!
-          </Typography>
-          
-          <Box mb={3}>
-            <FormControl fullWidth>
-              <InputLabel>Filter by Status</InputLabel>
-              <Select
-                value={statusFilter}
-                onChange={handleStatusFilterChange}
-                label="Filter by Status"
-              >
-                <MenuItem value="all">All Games</MenuItem>
-                <MenuItem value="planned" disabled={statusFilter === 'planned'}>Planned</MenuItem>
-                <MenuItem value="playing" disabled={statusFilter === 'playing'}>Currently Playing</MenuItem>
-                <MenuItem value="completed" disabled={statusFilter === 'completed'}>Completed</MenuItem>
-                <MenuItem value="dropped" disabled={statusFilter === 'dropped'}>Dropped</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-
-          <Box textAlign="center">
-            <Typography variant="body1" color="text.secondary" paragraph>
-              {categoryMessage}
-            </Typography>
-            <Typography variant="body1" color="text.secondary" paragraph>
-              Browse our collection of games and start rating your favorites!
-            </Typography>
-            <Button 
-              variant="contained" 
-              color="primary" 
-              onClick={() => navigate('/')}
-              sx={{ mt: 2 }}
-            >
-              Browse Games
-            </Button>
-            <Button
-              variant="outlined" 
-              color="secondary" 
-              onClick={handleLogout}
-              sx={{ mt: 2, ml: 2 }}
-            >
-              Logout
-            </Button>
-          </Box>
-        </Box>
-      </Container>
-    );
-  }
-
   return (
-    <Container>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Container sx={{ flex: '1 0 auto' }}>
       <Box mt={4}>
         {/* Header with Welcome and Toggle */}
         <Box mb={3} display="flex" justifyContent="space-between" alignItems="center">
@@ -317,6 +316,7 @@ const AccountDashboard = () => {
             <Typography variant="h5" sx={{ mt: 2, mb: 2 }}>
               Your Games
             </Typography>
+            {/* Show filter only if there are games */}
             <Box mb={3}>
               <FormControl fullWidth>
                 <InputLabel>Filter by Status</InputLabel>
@@ -336,148 +336,167 @@ const AccountDashboard = () => {
 
 
             {/* Display filtered games */}
-            <Grid container spacing={3}>
-              {filteredGames.map((game) => (
-                <Grid item xs={12} sm={6} md={4} key={game.id}>
-                  <Card 
-                    sx={{ 
-                      cursor: 'pointer',
-                      transition: 'transform 0.2s',
-                      height: 350,
-                      width: 240,
-                      maxWidth: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      position: 'relative',
-                      mx: 'auto',
-                      boxShadow: 3,
-                      borderRadius: 3,
-                      bgcolor: '#181c24',
-                      '&:hover': {
-                        transform: 'scale(1.02)',
-                        '& .action-buttons': {
-                          opacity: 1
-                        }
-                      }
-                    }}
-                    onClick={() => handleGameClick(game)}
-                  >
-                    {/* Title at the very top */}
-                    <Box sx={{
-                      width: '100%',
-                      bgcolor: '#222',
-                      borderTopLeftRadius: 12,
-                      borderTopRightRadius: 12,
-                      p: 1.2,
-                      minHeight: 52,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                      <Typography variant="h6" component="div" sx={{
-                        color: '#ccc',
-                        fontWeight: 600,
-                        fontSize: 18,
-                        textAlign: 'center',
-                        width: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'normal',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                      }}>
-                        {game.name}
-                      </Typography>
-                    </Box>
-                    {/* Game cover image */}
-                    <CardMedia
-                      component="img"
-                      image={game.background_image || 'https://via.placeholder.com/240x320'}
-                      alt={game.name}
+            {filteredGames.length > 0 ? (
+              <Grid container spacing={3}>
+                {filteredGames.map((game) => (
+                  <Grid item xs={12} sm={6} md={4} key={game.id}>
+                    <Card 
                       sx={{
-                        height: 218,
-                        width: '100%',
-                        objectFit: 'cover',
-                        objectPosition: 'center',
-                        background: '#222',
-                      }}
-                    />
-                    {/* Game details */}
-                    <CardContent sx={{
-                      flexGrow: 0,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      bgcolor: '#222',
-                      borderBottomLeftRadius: 12,
-                      borderBottomRightRadius: 12,
-                      p: 1.5,
-                      minHeight: 80,
-                      boxSizing: 'border-box',
-                      width: '100%',
-                      flexShrink: 0
-                    }}>
-                      <Typography variant="body1" color="text.secondary" sx={{
-                        color: '#bdbdbd',
-                        mt: 0, mb: 0.5,
-                        textAlign: 'center',
-                        width: '100%'
-                      }}>
-                        Status: {game ? (game.user_status || 'Not played') : (anime.user_status || 'Not set')}
-                      </Typography>
-                      {(game ? game.user_status?.toLowerCase() !== 'planned' : anime.user_status?.toLowerCase() !== 'planned') && (
-                        <Box display="flex" alignItems="center" sx={{ mt: 0 }}>
-                          <Typography component="legend" sx={{ color: '#bdbdbd', mr: 1 }}>Rating:</Typography>
-                          <Rating 
-                            value={game ? (game.user_rating || 0) : Number(anime.user_rating)} 
-                            readOnly 
-                            precision={0.5}
-                          />
-                        </Box>
-                      )}
-                    </CardContent>
-                    <Box 
-                      className="action-buttons"
-                      sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s',
+                        height: 350,
+                        width: 240,
+                        maxWidth: '100%',
                         display: 'flex',
-                        gap: 1,
-                        opacity: 0,
-                        transition: 'opacity 0.2s',
-                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                        borderRadius: 1,
-                        padding: 0.5,
-                        '& .MuiIconButton-root': {
-                          color: 'white',
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                        flexDirection: 'column',
+                        position: 'relative',
+                        mx: 'auto',
+                        boxShadow: 3,
+                        borderRadius: 3,
+                        bgcolor: '#181c24',
+                        '&:hover': {
+                          transform: 'scale(1.02)',
+                          '& .action-buttons': {
+                            opacity: 1
                           }
                         }
                       }}
+                      onClick={() => handleGameClick(game)}
                     >
-                      <IconButton 
-                        size="small" 
-                        onClick={(e) => handleUpdateClick(game, e)}
-                        color="primary"
+                      {/* Title at the very top */}
+                      <Box sx={{
+                        width: '100%',
+                        bgcolor: '#222',
+                        borderTopLeftRadius: 12,
+                        borderTopRightRadius: 12,
+                        p: 1.2,
+                        minHeight: 52,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        <Typography variant="h6" component="div" sx={{
+                          color: '#ccc',
+                          fontWeight: 600,
+                          fontSize: 18,
+                          textAlign: 'center',
+                          width: '100%',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'normal',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                        }}>
+                          {game.name}
+                        </Typography>
+                      </Box>
+                      {/* Game cover image */}
+                      <CardMedia
+                        component="img"
+                        image={game.background_image || 'https://via.placeholder.com/240x320'}
+                        alt={game.name}
+                        sx={{
+                          height: 218,
+                          width: '100%',
+                          objectFit: 'cover',
+                          objectPosition: 'center',
+                          background: '#222',
+                        }}
+                      />
+                      {/* Game details */}
+                      <CardContent sx={{
+                        flexGrow: 0,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        bgcolor: '#222',
+                        borderBottomLeftRadius: 12,
+                        borderBottomRightRadius: 12,
+                        p: 1.5,
+                        minHeight: 80,
+                        boxSizing: 'border-box',
+                        width: '100%',
+                        flexShrink: 0
+                      }}>
+                        <Typography variant="body1" color="text.secondary" sx={{
+                          color: '#bdbdbd',
+                          mt: 0, mb: 0.5,
+                          textAlign: 'center',
+                          width: '100%'
+                        }}>
+                          Status: {game ? (game.user_status || 'Not played') : (anime.user_status || 'Not set')}
+                        </Typography>
+                        {(game ? game.user_status?.toLowerCase() !== 'planned' : anime.user_status?.toLowerCase() !== 'planned') && (
+                          <Box display="flex" alignItems="center" sx={{ mt: 0 }}>
+                            <Typography component="legend" sx={{ color: '#bdbdbd', mr: 1 }}>Rating:</Typography>
+                            <Rating 
+                              value={game ? (game.user_rating || 0) : Number(anime.user_rating)} 
+                              readOnly 
+                              precision={0.5}
+                            />
+                          </Box>
+                        )}
+                      </CardContent>
+                      <Box 
+                        className="action-buttons"
+                        sx={{
+                          position: 'absolute',
+                          top: 220,
+                          right: 8,
+                          display: 'flex',
+                          gap: 1,
+                          opacity: 0,
+                          transition: 'opacity 0.2s',
+                          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                          borderRadius: 1,
+                          padding: 0.5,
+                          '& .MuiIconButton-root': {
+                            color: 'white',
+                            '&:hover': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                            }
+                          }
+                        }}
                       >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        onClick={(e) => handleDeleteClick(game, e)}
-                        color="error"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
+                        <IconButton 
+                          size="small" 
+                          onClick={(e) => handleUpdateClick(game, e)}
+                          color="primary"
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton 
+                          size="small" 
+                          onClick={(e) => handleDeleteClick(game, e)}
+                          color="error"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            ) : (
+               <Box textAlign="center" mt={4}>
+                 <Typography variant="body1" color="text.secondary" paragraph>
+                    {`You haven't added any ${contentType} to your ${contentType === 'games' ? statusFilter : animeStatusFilter} collection yet`}
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary" paragraph>
+                    Browse our collection and start adding to your {contentType}! 
+                  </Typography>
+                   <Button 
+                   variant="contained" 
+                   color="primary" 
+                   onClick={() => navigate('/')}
+                   sx={{ mt: 2 }}
+                 >
+                   Browse Content!
+                 </Button>
+              </Box>
+            )}
           </>
         )}
         {/* Anime Section */}
@@ -486,6 +505,7 @@ const AccountDashboard = () => {
             <Typography variant="h5" sx={{ mt: 2, mb: 2 }}>
               Your Anime
             </Typography>
+            {/* Show filter only if there is anime */}
             <Box mb={3}>
               <FormControl fullWidth>
                 <InputLabel>Filter by Status</InputLabel>
@@ -499,36 +519,40 @@ const AccountDashboard = () => {
                   <MenuItem value="watching">Watching</MenuItem>
                   <MenuItem value="completed">Completed</MenuItem>
                   <MenuItem value="dropped">Dropped</MenuItem>
+                  <MenuItem value="re-watching">Re-watching</MenuItem>
+                  <MenuItem value="paused">Paused</MenuItem>
                 </Select>
               </FormControl>
             </Box>
-            <Grid container spacing={3}>
-              {filteredAnime.map((anime) => (
-                <Grid item xs={12} sm={6} md={4} key={anime.id}>
-                  <Card 
-                    sx={{ 
-                      cursor: 'pointer',
-                      transition: 'transform 0.2s',
-                      height: 350,
-                      width: 240,
-                      maxWidth: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      position: 'relative',
-                      mx: 'auto',
-                      boxShadow: 3,
-                      borderRadius: 3,
-                      bgcolor: '#181c24',
-                      '&:hover': {
-                        transform: 'scale(1.02)',
-                        '& .action-buttons': {
-                          opacity: 1
+            {/* Display filtered anime */}
+            {filteredAnime.length > 0 ? (
+              <Grid container spacing={3}>
+                {filteredAnime.map((anime) => (
+                  <Grid item xs={12} sm={6} md={4} key={anime.id}>
+                     <Card 
+                      sx={{
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s',
+                        height: 350,
+                        width: 240,
+                        maxWidth: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        position: 'relative',
+                        mx: 'auto',
+                        boxShadow: 3,
+                        borderRadius: 3,
+                        bgcolor: '#181c24',
+                        '&:hover': {
+                          transform: 'scale(1.02)',
+                          '& .action-buttons': {
+                            opacity: 1
+                          }
                         }
-                      }
-                    }}
-                    onClick={() => navigate(`/anime/${anime.slug}`, { state: { anime } })}
-                  >
-                    {/* Title at the very top */}
+                      }}
+                       onClick={() => navigate(`/anime/${anime.slug}`, { state: { anime } })}
+                    >
+                       {/* Title at the very top */}
                     <Box sx={{
                       width: '100%',
                       bgcolor: '#222',
@@ -608,7 +632,7 @@ const AccountDashboard = () => {
                       className="action-buttons"
                       sx={{
                         position: 'absolute',
-                        top: 8,
+                        top: 220,
                         right: 8,
                         display: 'flex',
                         gap: 1,
@@ -640,45 +664,73 @@ const AccountDashboard = () => {
                         <DeleteIcon />
                       </IconButton>
                     </Box>
-                  </Card>
+                      </Card>
+                    </Grid>
+                  ))}
                 </Grid>
-              ))}
-            </Grid>
-          </>
-        )}
+              ) : (
+                 <Box textAlign="center" mt={4}>
+                   <Typography variant="body1" color="text.secondary" paragraph>
+                      {`You haven't added any ${contentType} to your ${contentType === 'games' ? statusFilter : animeStatusFilter} collection yet`}
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary" paragraph>
+                      Browse our collection and start adding to your {contentType}! 
+                    </Typography>
+                     <Button 
+                     variant="contained" 
+                     color="primary" 
+                     onClick={() => navigate('/')}
+                     sx={{ mt: 2 }}
+                   >
+                     Browse Content!
+                   </Button>
+                </Box>
+              )}
+            </>
+          )}
 
-        <Dialog
-          open={deleteDialogOpen}
-          onClose={() => setDeleteDialogOpen(false)}
-        >
-          <DialogTitle>Remove {contentType === 'games' ? 'Game' : 'Anime'}</DialogTitle>
-          <DialogContent>
-            <Typography>
-              Are you sure you want to remove {contentType === 'games' 
-                ? gameToDelete?.name 
-                : (animeToDelete?.title_english || animeToDelete?.title)
-              } from your collection?
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button 
-              onClick={contentType === 'games' ? handleDeleteConfirm : handleAnimeDeleteConfirm} 
-              color="error"
-            >
-              Delete
+          <Dialog
+            open={deleteDialogOpen}
+            onClose={() => setDeleteDialogOpen(false)}
+          >
+            <DialogTitle>Remove {contentType === 'games' ? 'Game' : 'Anime'}</DialogTitle>
+            <DialogContent>
+              <Typography>
+                Are you sure you want to remove {contentType === 'games' 
+                  ? gameToDelete?.name 
+                  : (animeToDelete?.title_english || animeToDelete?.title)
+                } from your collection?
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+              <Button 
+                onClick={contentType === 'games' ? handleDeleteConfirm : handleAnimeDeleteConfirm} 
+                color="error"
+              >
+                Delete
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Use the new EditContentDialog component */}
+          <EditContentDialog
+            open={isEditDialogOpen}
+            item={contentItemToEdit}
+            onClose={() => setIsEditDialogOpen(false)}
+            onSaveSuccess={handleEditSaveSuccess}
+          />
+
+          <Box mt={4} display="flex" justifyContent="center">
+            <Button variant="contained" color="secondary" onClick={handleLogout}>
+              Logout
             </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Box mt={4} display="flex" justifyContent="center">
-          <Button variant="contained" color="secondary" onClick={handleLogout}>
-            Logout
-          </Button>
+          </Box>
         </Box>
-      </Box>
-    </Container>
-  )
-};
+      </Container>
+      <Footer />
+    </Box>
+    )
+  };
 
 export default AccountDashboard;

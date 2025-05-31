@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline, AppBar, Toolbar, IconButton, Container, Box, CircularProgress } from '@mui/material';
+import { CssBaseline, AppBar, Toolbar, IconButton, Container, Box, CircularProgress, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { UserProvider, useUser } from './context/userContext';
 
 // Import pages
@@ -15,6 +17,7 @@ import LoginPage from './pages/LoginPage';
 import Register from './pages/RegisterPage';
 import AccountDashboard from './pages/AccountDashboard';
 import AnimeDetailPage from './pages/animeDetailPage';
+import ProfilePage from './pages/ProfilePage';
 
 // Create dark theme
 const darkTheme = createTheme({
@@ -46,7 +49,7 @@ const ProtectedRoute = ({ children }) => {
 
   useEffect(() => {
     if (!isInitializing && !isAuthenticated) {
-      navigate('/account', { replace: true });
+      navigate('/auth/login', { replace: true });
     }
   }, [isAuthenticated, isInitializing, navigate]);
 
@@ -66,14 +69,24 @@ const ProtectedRoute = ({ children }) => {
 const Navigation = () => {
   const { isAuthenticated, getUserInfo } = useUser();
   const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = React.useState(null);
 
-  const handleAccountClick = () => {
+  const handleAccountClick = (event) => {
     if (!isAuthenticated) {
       navigate('/auth/login', { replace: true });
     } else {
-      const userInfo = getUserInfo();
-      navigate(`/user/${userInfo.username}/dashboard`, { replace: true });
+      setAnchorEl(event.currentTarget);
     }
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleMenuItemClick = (path) => {
+    const userInfo = getUserInfo();
+    navigate(`/user/${userInfo.username}${path}`);
+    handleMenuClose();
   };
 
   return (
@@ -85,9 +98,54 @@ const Navigation = () => {
         <IconButton component={Link} to="/search" color="inherit">
           <SearchIcon />
         </IconButton>
-        <IconButton onClick={handleAccountClick} color="inherit">
+        <IconButton
+          onClick={handleAccountClick}
+          color="inherit"
+          aria-controls="account-menu"
+          aria-haspopup="true"
+        >
           <PersonIcon />
         </IconButton>
+        <Menu
+          id="account-menu"
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+          PaperProps={{
+            elevation: 0,
+            sx: {
+              overflow: 'visible',
+              filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+              mt: 1.5,
+              bgcolor: 'background.paper',
+              '& .MuiMenuItem-root': {
+                px: 2,
+                py: 1,
+              },
+            },
+          }}
+        >
+          <MenuItem onClick={() => handleMenuItemClick('/dashboard')}>
+            <ListItemIcon>
+              <DashboardIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Dashboard" />
+          </MenuItem>
+          <MenuItem onClick={() => handleMenuItemClick('/profile')}>
+            <ListItemIcon>
+              <AccountCircleIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Profile" />
+          </MenuItem>
+        </Menu>
       </Toolbar>
     </AppBar>
   );
@@ -108,6 +166,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <AccountDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/user/:username/profile" 
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
           </ProtectedRoute>
         } 
       />

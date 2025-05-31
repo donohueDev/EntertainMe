@@ -17,6 +17,7 @@ import {
 
 import { useUser } from '../context/userContext';
 import HorizontalScroller from '../components/HorizontalScroller';
+import Footer from '../components/Footer';
 
 const HomePage = () => {
   const [games, setGames] = useState([]);
@@ -37,9 +38,42 @@ const HomePage = () => {
     }
   }, [isAuthenticated, getUserInfo]);
 
-
   useEffect(() => {
+    // Cache handling functions
+    const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+    const getCachedData = (key) => {
+      const cachedData = localStorage.getItem(key);
+      if (!cachedData) return null;
+
+      const { data, timestamp } = JSON.parse(cachedData);
+      const isExpired = Date.now() - timestamp > CACHE_DURATION;
+
+      if (isExpired) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      return data;
+    };
+
+    const setCachedData = (key, data) => {
+      const cacheObject = {
+        data,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(key, JSON.stringify(cacheObject));
+    };
+
     const fetchGames = async () => {
+      const cachedGames = getCachedData('topGames');
+      
+      if (cachedGames) {
+        // console.log('Using cached games data');
+        setGames(cachedGames);
+        setLoading(false);
+        return;
+      }
+
       console.log('Fetching top games...');
       try {
         const response = await axios.get(`${API_BASE_URL}/api/games/top`, {
@@ -51,6 +85,7 @@ const HomePage = () => {
         console.log('Response:', response.data);
         if (response.data && Array.isArray(response.data)) {
           setGames(response.data);
+          setCachedData('topGames', response.data);
         } else {
           console.log('No games found in response');
           setError('No games found. Please try again later.');
@@ -62,8 +97,17 @@ const HomePage = () => {
         setLoading(false);
       }
     };
-    // fetch top anime from api
+
     const fetchAnime = async () => {
+      const cachedAnime = getCachedData('topAnime');
+      
+      if (cachedAnime) {
+        // console.log('Using cached anime data');
+        setAnime(cachedAnime);
+        setLoading(false);
+        return;
+      }
+
       console.log('Fetching top anime...');
       try {
         const response = await axios.get(`${API_BASE_URL}/api/anime/top`, {
@@ -75,6 +119,7 @@ const HomePage = () => {
         console.log('Anime response:', response.data);
         if (response.data && Array.isArray(response.data)) {
           setAnime(response.data);
+          setCachedData('topAnime', response.data);
         }
       } catch (error) {
         console.error("Failed to fetch anime:", error.message);
@@ -83,12 +128,15 @@ const HomePage = () => {
         setLoading(false);
       }
     };
+
     fetchGames();
     fetchAnime();
   }, []);
 
+  // Modify handleLoadGames and handleLoadAnime to clear cache when manually updating
   const handleLoadGames = async () => {
     console.log('Updating top games...');
+    localStorage.removeItem('topGames');
     try {
       const response = await axios.post(`${API_BASE_URL}/api/games/update-top-games`, {}, {
         headers: {
@@ -110,6 +158,7 @@ const HomePage = () => {
 
   const handleLoadAnime = async () => {
     console.log('Updating top anime...');
+    localStorage.removeItem('topAnime');
     try {
       const response = await axios.post(`${API_BASE_URL}/api/anime/update-top-anime`, {}, {
         headers: {
@@ -331,10 +380,15 @@ const HomePage = () => {
 
   // Home page layout
   return (
+    <Box sx={{ 
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100vh',
+      backgroundColor: '#0A1929',
+    }}>
     <Container maxWidth="xl" sx={{ 
       py: 4,
-      backgroundColor: '#0A1929',
-      minHeight: '100vh',
+      flex: '1 0 auto',
       color: '#E0E0E0',
       display: 'block', // revert to block to allow content to flow naturally
       // Remove alignItems, justifyContent, and gap for block layout
@@ -370,6 +424,26 @@ const HomePage = () => {
         </Typography>
       </Box>
 
+      {/* Construction Warning Banner */}
+      <Alert 
+        severity="warning" 
+        sx={{ 
+          mb: 4,
+          textAlign: 'center',
+          backgroundColor: '#332d1a',
+          color: '#ffd700',
+          border: '1px solid #ffd700',
+          '& .MuiAlert-icon': {
+            color: '#ffd700'
+          }
+        }}
+      >
+        <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🚧 Website under construction! 🏗️ We're actively working on adding more features and improvements. 
+          Some features may be incomplete or change over time. Thanks for your patience! 👷
+        </Typography>
+      </Alert>
+
       {/* Introduction Section */}
       <Box 
         sx={{ 
@@ -396,6 +470,8 @@ const HomePage = () => {
         >
           Welcome to EntertainME{isAuthenticated ? `, ${userInfo.username}!` : '!'}
         </Typography>
+
+
         
         <Typography 
           variant="h6" 
@@ -445,6 +521,8 @@ const HomePage = () => {
         title="Top 100 Anime"
       />
     </Container>
+    <Footer />
+    </Box>
   );  
 };
 

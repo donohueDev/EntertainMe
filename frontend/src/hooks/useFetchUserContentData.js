@@ -1,6 +1,45 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
+// Cache configuration
+const CACHE_TTL = 60 * 1000; // 1 minute in milliseconds
+const userDataCache = new Map();
+
+const getCacheKey = (userId, contentType, contentId) => 
+  `user_${userId}_${contentType}${contentId ? `_${contentId}` : ''}`;
+
+const getCachedData = (cacheKey) => {
+  const cached = userDataCache.get(cacheKey);
+  if (!cached) return null;
+
+  const isExpired = Date.now() - cached.timestamp > CACHE_TTL;
+  if (isExpired) {
+    userDataCache.delete(cacheKey);
+    return null;
+  }
+
+  return cached.data;
+};
+
+const setCachedData = (cacheKey, data) => {
+  userDataCache.set(cacheKey, {
+    data,
+    timestamp: Date.now(),
+  });
+};
+
+// Export cache invalidation function to be used when updates occur
+export const invalidateUserDataCache = (userId, contentType, contentId) => {
+  const cacheKey = getCacheKey(userId, contentType, contentId);
+  userDataCache.delete(cacheKey);
+  
+  // If a specific content was updated, also invalidate the "all content" cache
+  if (contentId) {
+    const allContentCacheKey = getCacheKey(userId, contentType, null);
+    userDataCache.delete(allContentCacheKey);
+  }
+};
+
 /**
  * useFetchUserContentData - Custom hook for fetching user-specific content data (rating, status, etc.)
  * @param {Object} params
@@ -17,13 +56,24 @@ const useFetchUserContentData = ({ isAuthenticated, getUserInfo, contentId, cont
 
   const fetchUserContentData = useCallback(async () => {
     if (!isAuthenticated) return;
-    setLoading(true);
-    setError('');
+    
     try {
       const userInfo = await getUserInfo();
       if (!userInfo?.userId) throw new Error('User information not found');
+
+      // Check cache first
+      const cacheKey = getCacheKey(userInfo.userId, contentType, contentId);
+      const cachedData = getCachedData(cacheKey);
+      
+      if (cachedData) {
+        setUserContentData(cachedData);
+        return;
+      }
+
+      setLoading(true);
+      setError('');
+
       let url;
-      console.log(`Fetching user content data for type: ${contentType}, ID: ${contentId}`);
       if (contentId) {
         // Fetch a specific content item for the user
         const routeMap = {
@@ -43,7 +93,9 @@ const useFetchUserContentData = ({ isAuthenticated, getUserInfo, contentId, cont
         url = routeMap[contentType];
         if (!url) throw new Error('Unsupported content type');
       }
+
       const response = await axios.get(url);
+      setCachedData(cacheKey, response.data);
       setUserContentData(response.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch user content data.');
@@ -56,7 +108,22 @@ const useFetchUserContentData = ({ isAuthenticated, getUserInfo, contentId, cont
     fetchUserContentData();
   }, [fetchUserContentData]);
 
-  return { userContentData, loading, error, refetch: fetchUserContentData, setUserContentData };
+  // Include invalidateCache in the return object
+  const invalidateCache = useCallback(() => {
+    const userInfo = getUserInfo();
+    if (userInfo?.userId) {
+      invalidateUserDataCache(userInfo.userId, contentType, contentId);
+    }
+  }, [getUserInfo, contentType, contentId]);
+
+  return { 
+    userContentData, 
+    loading, 
+    error, 
+    refetch: fetchUserContentData, 
+    setUserContentData,
+    invalidateCache 
+  };
 };
 
 export default useFetchUserContentData;

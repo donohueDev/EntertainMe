@@ -16,18 +16,39 @@ import {
 } from '@mui/material';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import ReviewBox from '../components/ReviewBox';
-import useHandleRating from '../hooks/useHandleRating';
 import useFetchDetails from '../hooks/useFetchDetails';
-import useFetchUserContentData from '../hooks/useFetchUserContentData';
+import useUserContentRating from '../hooks/useUserContentRating';
 import LoginPromptBox from '../components/LoginPromptBox';
+
+const THUMBNAIL_CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+const getCachedThumbnail = (videoId) => {
+  const cached = localStorage.getItem(`thumbnail_${videoId}`);
+  if (!cached) return null;
+
+  const { url, timestamp } = JSON.parse(cached);
+  const isExpired = Date.now() - timestamp > THUMBNAIL_CACHE_DURATION;
+
+  if (isExpired) {
+    localStorage.removeItem(`thumbnail_${videoId}`);
+    return null;
+  }
+
+  return url;
+};
+
+const setCachedThumbnail = (videoId, url) => {
+  localStorage.setItem(`thumbnail_${videoId}`, JSON.stringify({
+    url,
+    timestamp: Date.now()
+  }));
+};
 
 const AnimeDetailPage = () => {
   const location = useLocation();
   const initialAnime = location.state?.anime;
   const [showTrailer, setShowTrailer] = useState(false);
-  const { isAuthenticated, getUserInfo } = useUser();
-  const [status, setStatus] = useState('');
-  const [rating, setRating] = useState(0);
+  const { isAuthenticated } = useUser();
   const [youtubeApiReady, setYoutubeApiReady] = useState(false);
   const [displayedImageUrl, setDisplayedImageUrl] = useState('');
   
@@ -48,32 +69,29 @@ const AnimeDetailPage = () => {
     { initialData: initialAnime, dependencies: [initialAnime?.slug] }
   );
 
-  // User-specific anime data
+  // Use the comprehensive rating hook
   const {
+    rating,
+    setRating,
+    status,
+    setStatus,
     userContentData: userAnimeData,
-    setUserContentData: setUserAnimeData
-  } = useFetchUserContentData({
-    isAuthenticated,
-    getUserInfo,
-    contentId: anime?.id,
-    contentType: 'anime'
-  });
-
-  // Rating handler hook
-  const {
-    handleRating: handleRatingHook,
     loading: ratingLoading,
     error: ratingError,
     setError: setRatingError,
     success: ratingSuccess,
-    setSuccess: setRatingSuccess
-  } = useHandleRating({
+    setSuccess: setRatingSuccess,
+    submitRating,
+    updateUserContentState
+  } = useUserContentRating({
     contentType: 'anime',
-    contentId: anime?.id,
-    getUserContentData: undefined,
-    usernameField: 'username',
-    idField: 'animeId'
+    contentId: anime?.id
   });
+
+  // Update state when user data changes
+  useEffect(() => {
+    updateUserContentState();
+  }, [updateUserContentState]);
 
   const initializePlayer = useCallback(() => {
     if (window.YT && anime?.trailer?.embed_url && !playerRef.current) {
@@ -163,7 +181,7 @@ const AnimeDetailPage = () => {
       setRating(userAnimeData.user_rating || 0);
       setStatus(userAnimeData.user_status || '');
     }
-  }, [userAnimeData]);
+  }, [userAnimeData, setRating, setStatus]);
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -214,9 +232,23 @@ const AnimeDetailPage = () => {
     };
 
     const videoId = getYouTubeVideoId(currentTrailerEmbedUrl);
-    const youtubeThumbnail = getYouTubeThumbnailUrl(videoId);
+    if (!videoId) {
+      setDisplayedImageUrl(fallbackImageUrl);
+      // console.log("Using fallback image as no video ID found in trailer embed URL.");
+      return;
+    }
 
-    // Set fallback image first while we try to load YouTube thumbnail
+    // Check cache first
+    const cachedThumbnail = getCachedThumbnail(videoId);
+    if (cachedThumbnail) {
+      setDisplayedImageUrl(cachedThumbnail);
+      // console.log(`Using cached thumbnail for video ID ${videoId}`);
+      return;
+    }
+
+    const youtubeThumbnail = getYouTubeThumbnailUrl(videoId);
+    
+    // Set fallback image while we try to load YouTube thumbnail
     setDisplayedImageUrl(fallbackImageUrl);
 
     if (youtubeThumbnail) {
@@ -225,29 +257,22 @@ const AnimeDetailPage = () => {
 
       fetch(youtubeThumbnail)
         .then(response => {
-          // Only proceed if this fetch attempt is for the current trailer URL
           if (fetchStatusRef.current.currentTrailerUrl === currentTrailerEmbedUrl) {
-            if (!response.ok) {
-              if (!fetchStatusRef.current.warningLogged) {
-                console.warn(`YouTube thumbnail fetch failed with status ${response.status} for video ID ${videoId}. Using database image.`);
-                fetchStatusRef.current.warningLogged = true;
-              }
-              // Fallback image is already set, no need to set it again
-            } else {
-              // YouTube thumbnail loaded successfully, update the displayed image
+            if (response.ok) {
               setDisplayedImageUrl(youtubeThumbnail);
-              console.log(`YouTube thumbnail loaded successfully for video ID ${videoId}`);
+              // Cache the successful thumbnail URL
+              setCachedThumbnail(videoId, youtubeThumbnail);
+              // console.log("Cached YouTube thumbnail for video ID:", videoId);
+            } else if (!fetchStatusRef.current.warningLogged) {
+              console.warn(`YouTube thumbnail fetch failed with status ${response.status} for video ID ${videoId}`);
+              fetchStatusRef.current.warningLogged = true;
             }
           }
         })
         .catch(error => {
-          // Only log error if this fetch attempt is for the current trailer URL
-          if (fetchStatusRef.current.currentTrailerUrl === currentTrailerEmbedUrl) {
-            if (!fetchStatusRef.current.warningLogged) {
-              console.warn(`YouTube thumbnail fetch failed for video ID ${videoId}. Using database image. Error: ${error}`);
-              fetchStatusRef.current.warningLogged = true;
-            }
-            // Fallback image is already set, no need to set it again
+          if (fetchStatusRef.current.currentTrailerUrl === currentTrailerEmbedUrl && !fetchStatusRef.current.warningLogged) {
+            console.warn(`YouTube thumbnail fetch failed for video ID ${videoId}. Error: ${error}`);
+            fetchStatusRef.current.warningLogged = true;
           }
         });
     } else {
@@ -255,9 +280,7 @@ const AnimeDetailPage = () => {
         console.warn('Could not get YouTube thumbnail URL.');
         fetchStatusRef.current.warningLogged = true;
       }
-      // Mark attempted even if URL could not be derived, to prevent re-attempt
       fetchStatusRef.current.attempted = true;
-      // Fallback image is already set, no need to set it again
     }
   }, [anime]);  // Re-run effect if anime changes
 
@@ -475,7 +498,7 @@ const AnimeDetailPage = () => {
             rating={rating}
             setRating={setRating}
             loading={ratingLoading}
-            onSubmit={() => handleRatingHook({ rating, status, setUserContentData: setUserAnimeData })}
+            onSubmit={submitRating}
             error={ratingError}
             setError={setRatingError}
             success={ratingSuccess}
