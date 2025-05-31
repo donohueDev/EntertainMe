@@ -143,7 +143,14 @@ const EditContentDialog = ({ open, item, onClose, onSaveSuccess }) => {
           <InputLabel>Status</InputLabel>
           <Select
             value={editedStatus}
-            onChange={(e) => setEditedStatus(e.target.value)}
+            onChange={(e) => {
+              const newStatus = e.target.value;
+              setEditedStatus(newStatus);
+              // Reset rating to 0 when changing from 'planned' to another status
+              if (editedStatus.toLowerCase() === 'planned' && newStatus.toLowerCase() !== 'planned') {
+                setEditedRating(0);
+              }
+            }}
             label="Status"
           >
             {statusOptions.map((option) => (
@@ -165,9 +172,14 @@ const EditContentDialog = ({ open, item, onClose, onSaveSuccess }) => {
                  setEditedRating(newValue);
                }}
                sx={{
-                 // Style for empty stars with outline
-                 '& .MuiRating-iconEmpty': { color: 'transparent', stroke: '#ccc', strokeWidth: 1 },
-                 '& .MuiRating-iconFilled': { color: '#ffb400' }, // Style for filled stars (e.g., gold)
+                  mb: 3,
+                  '& .MuiRating-iconFilled': {
+                    color: 'rgb(62, 155, 255)'
+                  },
+                  '& .MuiRating-iconHover': {
+                    color: 'gold'
+                  },
+                 '& .MuiRating-iconEmpty': { color: 'rgb(181, 181, 198)', strokeWidth: 0.5},
                  '& .MuiRating-icon': { fontSize: '2rem' }, // Make stars bigger
                }}
              />

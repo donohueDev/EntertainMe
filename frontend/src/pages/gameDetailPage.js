@@ -13,7 +13,6 @@ import {
   Alert,
   CircularProgress,
   Grid,
-  Rating,
   Snackbar
 } from '@mui/material';
 import Tooltip from '@mui/material/Tooltip';
@@ -178,47 +177,21 @@ const GameDetailPage = () => {
             </Grid>
           </Box>
 
-          {/* User Rating Section - Only shown for logged-in users */}
+          {/* User Rating Section */}
           {isAuthenticated ? (
-            <>
-              {userGameData && (
-                <Box sx={{ mb: 4, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-                  <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
-                    Current Status:
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: 'white', mb: 1 }}>
-                    Status: {userGameData.user_status || 'Not set'}
-                  </Typography>
-                  {userGameData.user_status !== 'planned' && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body1" sx={{ color: 'white' }}>
-                        Rating:
-                      </Typography>
-                      <Rating
-                        value={userGameData.user_rating || 0}
-                        readOnly
-                        precision={0.5}
-                        size="small"
-                      />
-                    </Box>
-                  )}
-                </Box>
-              )}
-
-              <ReviewBox
-                contentType="game"
-                status={status}
-                setStatus={setStatus}
-                rating={rating}
-                setRating={setRating}
-                loading={ratingLoading}
-                onSubmit={submitRating}
-                error={ratingError}
-                setError={setRatingError}
-                success={ratingSuccess}
-                setSuccess={setRatingSuccess}
-              />
-            </>
+            <ReviewBox
+              contentType="game"
+              status={status}
+              setStatus={setStatus}
+              rating={rating}
+              setRating={setRating}
+              loading={ratingLoading}
+              onSubmit={submitRating}
+              error={ratingError}
+              setError={setRatingError}
+              success={ratingSuccess}
+              setSuccess={setRatingSuccess}
+            />
           ) : (
             <LoginPromptBox
               contentType="game"

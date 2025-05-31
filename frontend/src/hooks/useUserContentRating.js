@@ -34,11 +34,25 @@ const useUserContentRating = ({ contentType, contentId }) => {
     contentType
   });
 
+  // Normalize status value to match the format expected by ReviewBox
+  const normalizeStatus = (dbStatus) => {
+    if (!dbStatus) return '';
+    // Convert to lowercase for comparison
+    const status = dbStatus.toLowerCase();
+    // Handle game statuses
+    if (status === 'currently playing') return 'playing';
+    if (status === 'plan to play') return 'planned';
+    // Handle anime statuses
+    if (status === 'currently watching') return 'watching';
+    if (status === 'plan to watch') return 'planned';
+    return status;
+  };
+
   // Update local state when user data changes
   const updateUserContentState = useCallback(() => {
     if (userContentData) {
       setRating(userContentData.user_rating || 0);
-      setStatus(userContentData.user_status || '');
+      setStatus(normalizeStatus(userContentData.user_status) || '');
     }
   }, [userContentData]);
 

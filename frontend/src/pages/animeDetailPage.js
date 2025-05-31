@@ -12,7 +12,6 @@ import {
   CardContent,
   CircularProgress,
   Grid,
-  Rating
 } from '@mui/material';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import ReviewBox from '../components/ReviewBox';
@@ -464,54 +463,30 @@ const AnimeDetailPage = () => {
               </Grid>
             </Grid>
           </Box>
-          {/* User review and status section */}
-      {isAuthenticated ? (
-        <>
-          {userAnimeData && (
-            <Box sx={{ mb: 4, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-              <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
-                Current Status:
-              </Typography>
-              <Typography variant="body1" sx={{ color: 'white', mb: 1 }}>
-                Status: {userAnimeData.user_status || 'Not set'}
-              </Typography>
-              {userAnimeData.user_status !== 'planned' && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body1" sx={{ color: 'white' }}>
-                    Rating:
-                  </Typography>
-                  <Rating
-                    value={userAnimeData.user_rating || 0}
-                    readOnly
-                    precision={0.5}
-                    size="small"
-                  />
-                </Box>
-              )}
-            </Box>
+
+          {/* User Rating Section */}
+          {isAuthenticated ? (
+            <ReviewBox
+              contentType="anime"
+              status={status}
+              setStatus={setStatus}
+              rating={rating}
+              setRating={setRating}
+              loading={ratingLoading}
+              onSubmit={submitRating}
+              error={ratingError}
+              setError={setRatingError}
+              success={ratingSuccess}
+              setSuccess={setRatingSuccess}
+            />
+          ) : (
+            <LoginPromptBox
+              contentType="anime"
+              actions={["rate", "track", "build your collection"]}
+            />
           )}
 
-          <ReviewBox
-            contentType="anime"
-            status={status}
-            setStatus={setStatus}
-            rating={rating}
-            setRating={setRating}
-            loading={ratingLoading}
-            onSubmit={submitRating}
-            error={ratingError}
-            setError={setRatingError}
-            success={ratingSuccess}
-            setSuccess={setRatingSuccess}
-          />
-        </>
-      ) : (
-        <LoginPromptBox
-          contentType="anime"
-          actions={["rate", "track", "build your collection"]}
-        />
-      )}
-      {/* Anime description */}
+          {/* Anime Description */}
           <Box sx={{ mt: 4 }}>
             <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
               Description

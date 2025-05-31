@@ -7,6 +7,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { UserProvider, useUser } from './context/userContext';
 
 // Import pages
@@ -49,7 +50,7 @@ const ProtectedRoute = ({ children }) => {
 
   useEffect(() => {
     if (!isInitializing && !isAuthenticated) {
-      navigate('/auth/login', { replace: true });
+      navigate('/account', { replace: true });
     }
   }, [isAuthenticated, isInitializing, navigate]);
 
@@ -67,7 +68,7 @@ const ProtectedRoute = ({ children }) => {
 
 // Navigation component
 const Navigation = () => {
-  const { isAuthenticated, getUserInfo } = useUser();
+  const { isAuthenticated, getUserInfo, logout } = useUser();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState(null);
 
@@ -83,28 +84,42 @@ const Navigation = () => {
     setAnchorEl(null);
   };
 
-  const handleMenuItemClick = (path) => {
-    const userInfo = getUserInfo();
-    navigate(`/user/${userInfo.username}${path}`);
+  const handleLogout = () => {
+    logout();
     handleMenuClose();
+    navigate('/', { replace: true });
+  };
+
+  const handleMenuItemClick = (path) => {
+    if (path === '/logout') {
+      handleLogout();
+    } else {
+      const userInfo = getUserInfo();
+      navigate(`/user/${userInfo.username}${path}`);
+      handleMenuClose();
+    }
   };
 
   return (
     <AppBar position="fixed" sx={{ top: 0, bottom: 'auto', zIndex: (theme) => theme.zIndex.drawer + 1 }}>
       <Toolbar sx={{ justifyContent: 'space-around' }}>
-        <IconButton component={Link} to="/" color="inherit">
+        <IconButton component={Link} to="/" color="inherit" sx={{ gap: 1 }}>
           <HomeIcon />
+          Home
         </IconButton>
-        <IconButton component={Link} to="/search" color="inherit">
+        <IconButton component={Link} to="/search" color="inherit" sx={{ gap: 1 }}>
           <SearchIcon />
+          Search
         </IconButton>
         <IconButton
           onClick={handleAccountClick}
           color="inherit"
           aria-controls="account-menu"
           aria-haspopup="true"
+          sx={{ gap: 1 }}
         >
           <PersonIcon />
+          Account
         </IconButton>
         <Menu
           id="account-menu"
@@ -119,7 +134,7 @@ const Navigation = () => {
             vertical: 'top',
             horizontal: 'right',
           }}
-          PaperProps={{
+          Paper={{
             elevation: 0,
             sx: {
               overflow: 'visible',
@@ -145,7 +160,14 @@ const Navigation = () => {
             </ListItemIcon>
             <ListItemText primary="Profile" />
           </MenuItem>
+          <MenuItem onClick={() => handleMenuItemClick('/logout')}>
+            <ListItemIcon>
+              <LogoutIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Logout" />
+          </MenuItem>
         </Menu>
+
       </Toolbar>
     </AppBar>
   );
@@ -221,4 +243,4 @@ const App = () => {
   );
 };
 
-export default App; 
+export default App;

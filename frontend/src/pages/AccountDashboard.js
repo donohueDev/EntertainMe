@@ -38,7 +38,6 @@ const AccountDashboard = () => {
   const [anime, setAnime] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
   const [filteredGames, setFilteredGames] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
@@ -435,6 +434,11 @@ const AccountDashboard = () => {
                               value={game ? (game.user_rating || 0) : Number(anime.user_rating)} 
                               readOnly 
                               precision={0.5}
+                              sx={{
+                                '& .MuiRating-iconFilled': {
+                                  color: 'rgb(62, 155, 255)'
+                                }
+                              }}
                             />
                           </Box>
                         )}
@@ -621,9 +625,14 @@ const AccountDashboard = () => {
                         <Box display="flex" alignItems="center" sx={{ mt: 0 }}>
                           <Typography component="legend" sx={{ color: '#bdbdbd', mr: 1 }}>Rating:</Typography>
                           <Rating 
-                            value={Number(anime.user_rating)} 
+                            value={Number(anime.user_rating)}
                             readOnly 
                             precision={0.5}
+                            sx={{
+                              '& .MuiRating-iconFilled': {
+                                color: 'rgb(62, 155, 255)'
+                              }
+                            }}
                           />
                         </Box>
                       )}
@@ -721,8 +730,8 @@ const AccountDashboard = () => {
             onSaveSuccess={handleEditSaveSuccess}
           />
 
-          <Box mt={4} display="flex" justifyContent="center">
-            <Button variant="contained" color="secondary" onClick={handleLogout}>
+          <Box mt={4} display="flex" justifyContent="center" mb={4}>
+            <Button variant="contained" color="primary" onClick={handleLogout}>
               Logout
             </Button>
           </Box>

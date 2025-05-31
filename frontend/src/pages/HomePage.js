@@ -13,8 +13,10 @@ import {
   CircularProgress,
   Alert,
   Button,
+  Paper,
 } from '@mui/material';
 
+import { Title } from '../components/Title';
 import { useUser } from '../context/userContext';
 import HorizontalScroller from '../components/HorizontalScroller';
 import Footer from '../components/Footer';
@@ -387,62 +389,31 @@ const HomePage = () => {
       backgroundColor: '#0A1929',
     }}>
     <Container maxWidth="xl" sx={{ 
-      py: 4,
+      py: 0,
       flex: '1 0 auto',
       color: '#E0E0E0',
-      display: 'block', // revert to block to allow content to flow naturally
-      // Remove alignItems, justifyContent, and gap for block layout
+      display: 'block',
     }}>
-      {/* Header with logo and title */}
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between', 
-          mb: 4 
-        }}
-      >
-        {/* Logo placeholder */}
-        <Box 
-          component="img" 
-          src="/logo-placeholder-image.png"
-          alt="Logo"
-          sx={{ width: 60, height: 60 }}
-        />
-  
-        {/* Title */}
-        <Typography 
-          variant="h4" 
-          sx={{ 
-            fontWeight: 'bold', 
-            textAlign: 'center', 
-            flexGrow: 1, 
-            color: '#E0E0E0' // Light gray
-          }}
-        >
-          EntertainME
-        </Typography>
-      </Box>
+
+      <Title />
 
       {/* Construction Warning Banner */}
-      <Alert 
-        severity="warning" 
-        sx={{ 
-          mb: 4,
-          textAlign: 'center',
-          backgroundColor: '#332d1a',
-          color: '#ffd700',
-          border: '1px solid #ffd700',
-          '& .MuiAlert-icon': {
-            color: '#ffd700'
-          }
+      <Paper
+        sx={{
+          p: 2,
+          mt: 2,
+          mb: 3,
+          background: 'linear-gradient(45deg, #0A1929, #1A2B3C)',
+          color: '#FFD700',
+          border: '1px solid #FFD700',
+          borderRadius: 2,
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
         }}
       >
-        <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          🚧 Website under construction! 🏗️ We're actively working on adding more features and improvements. 
-          Some features may be incomplete or change over time. Thanks for your patience! 👷
+        <Typography variant="body1" align="center" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+          🚧 Website under construction! Please pardon our progress 🏗️
         </Typography>
-      </Alert>
+      </Paper>
 
       {/* Introduction Section */}
       <Box 

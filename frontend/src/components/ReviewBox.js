@@ -48,11 +48,21 @@ const ReviewBox = ({
 }) => {
   const statusOptions = STATUS_OPTIONS[contentType] || STATUS_OPTIONS['game'];
   return (
-    <Box sx={{ my: 4 }}>
-      <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
+    <Box
+      sx={{
+        my: 4,
+        p: 3,
+        borderRadius: 2,
+        background: 'linear-gradient(45deg, #0A1929, #1A2B3C)',
+        border: '1px solid rgba(76, 175, 80, 0.3)',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+        color: 'white',
+      }}
+    >
+      <Typography variant="h6" gutterBottom sx={{ color: 'white', mb: 2 }}>
         Update your {contentType} status:
       </Typography>
-      <FormControl fullWidth sx={{ mb: 3 }}>
+      <FormControl fullWidth sx={{ mb: 2 }}>
         <InputLabel id="status-label">{contentType.charAt(0).toUpperCase() + contentType.slice(1)} Status</InputLabel>
         <Select
           labelId="status-label"
@@ -77,7 +87,15 @@ const ReviewBox = ({
             onChange={(event, newValue) => setRating(newValue)}
             precision={0.5}
             size="large"
-            sx={{ mb: 3 }}
+            sx={{ 
+              mb: 3,
+              '& .MuiRating-iconFilled': {
+                color: 'rgb(62, 155, 255)'
+              },
+              '& .MuiRating-iconHover': {
+                color: 'gold'
+              }
+            }}
           />
         </>
       )}
@@ -88,7 +106,13 @@ const ReviewBox = ({
         onClick={onSubmit}
         disabled={loading}
         fullWidth
-        sx={{ mb: 3 }}
+        sx={{
+          mb: 3,
+          background: 'linear-gradient(45deg,rgb(62, 155, 255),rgb(22, 66, 105))',
+          '&:hover': {
+            background: 'linear-gradient(45deg,rgb(255, 255, 255),rgb(23, 58, 127))',
+          },
+        }}
       >
         {loading ? <CircularProgress size={24} /> : 'Update Rating'}
       </Button>
