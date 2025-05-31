@@ -15,46 +15,79 @@ datasource db {
 }
 
 model Anime {
-  id                Int         @id @default(autoincrement())
-  mal_id            Int         @unique  // Changed to not be primary key
-  slug              String      @unique
+  id                Int            @id @default(autoincrement())
+  mal_id            Int            @unique
+  slug              String         @unique
+  url               String?
   title             String
   title_english     String?
   title_japanese    String?
-  synopsis           String?
-  background         String?
-  type               String?
-  source             String?
-  episodes           Int?
-  status             String?
-  airing             Boolean
-  aired_from         DateTime?
-  aired_to           DateTime?
-  duration           String?
-  rating             String?
-  score              Float?
-  scored_by          Int?
-  rank               Int?
-  popularity         Int?
-  members            Int?
-  favorites          Int?
-  season             String?
-  year               Int?
-  approved           Boolean
-  broadcast_day      String?
-  broadcast_time     String?
+  title_synonyms    String[]       // Array of strings
+  synopsis          String?
+  background        String?
+  type              String?
+  source            String
+  api_source        String
+  api_source_id     String
+  episodes          Int?
+  status            String?
+  airing            Boolean
+  aired_from        DateTime?
+  aired_to          DateTime?
+  aired_string      String?        // "Sep 29, 2023 to Mar 22, 2024"
+  aired_prop        Json?         
+  duration          String?
+  rating            String?
+  score             Float?
+  scored_by         Int?
+  rank              Int?
+  popularity        Int?
+  members           Int?
+  favorites         Int?
+  season            String?
+  year              Int?
+  approved          Boolean
+  broadcast_day     String?
+  broadcast_time    String?
   broadcast_timezone String?
-  broadcast_string   String?
-  trailer_url        String?
-  trailer_youtube_id String?
-  trailer_embed_url  String?
-  image_url          String?
-  image_large_url    String?
-  image_small_url    String?
-  updated_at         DateTime    @default(now())
-  userAnimes        UserAnime[] 
+  broadcast_string  String?
+  trailer           Json?          
+  images            Json?          
+  producers         AnimeProducer[]
+  titles            AnimeTitle[]
+  userAnimes        UserAnime[]
+  topAnimes        Top50Anime[]
+  updated_at        DateTime       @default(now())
+  adult             Boolean         @default(false)
+
+  // Site statistics (user aggregate values)
+  site_rating       Float?    @default(0)
+  site_ratings_count Int      @default(0)
+  site_ratings      Json?     @default("{}")
+  site_reviews_count Int      @default(0)
+  site_added        Int       @default(0)
+  site_added_by_status   Json?     @default("{\"watching\":0,\"planned\":0,\"completed\":0,\"dropped\":0}")
 
   @@index([title])
+  @@unique([api_source, api_source_id])
+}
+
+model AnimeTitle {
+  id        Int    @id @default(autoincrement())
+  anime     Anime  @relation(fields: [animeId], references: [id])
+  animeId   Int
+  type      String
+  title     String
+}
+
+model AnimeProducer {
+  id        Int    @id @default(autoincrement())
+  anime     Anime  @relation(fields: [animeId], references: [id])
+  animeId   Int
+  mal_id    Int
+  type      String
+  name      String
+  url       String
 }
 
 model Game {
@@ -70,10 +103,10 @@ model Game {
   esrb_rating_id    Int?
   esrb_rating       EsrbRating?   @relation(fields: [esrb_rating_id], references: [id])
   description_raw   String?
-  
+
   // RAWG data
   rawg_rating       Float?
-  
+
   // Site statistics
   rating       Float?    @default(0)
   rating_top   Int       @default(0)
@@ -83,7 +116,10 @@ model Game {
   added        Int       @default(0)
   added_by_status   Json?     @default("{\"playing\":0,\"planned\":0,\"completed\":0,\"dropped\":0}")
 
-  
+  // API source fields
+  api_source    String
+  api_source_id String
+
   // Relationships
   platforms         GamePlatform[]
   tags             GameTag[]
@@ -93,6 +129,7 @@ model Game {
 
   @@index([name])
   @@index([esrb_rating_id])
+  @@unique([api_source, api_source_id])
 }
 
 model User {
@@ -145,6 +182,18 @@ model Top50Games {
 
   @@unique([rank])
   @@index([game_id])
+}
+
+model Top50Anime {
+  id         Int      @id @default(autoincrement())
+  anime_id   Int
+  rank       Int
+  value      Float?
+  created_at DateTime @default(now())
+  anime      Anime    @relation(fields: [anime_id], references: [id])
+
+  @@unique([rank])
+  @@index([anime_id])
 }
 
 model Tag {

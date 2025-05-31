@@ -3,14 +3,21 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 export default prisma;
 
-interface RatingRequest {
+interface gameRatingRequest {
   username: string;
   gameId: number;
   rating: number;
   status: string;
 }
 
-export const userGamesController = {
+interface animeRatingRequest {
+  username: string;
+  animeId: number;
+  rating: number;
+  status: string;
+}
+
+export const userContentController = {
   // Get games for a specific user by their ID
   getUserGames: async (req: Request, res: Response) => {
     const { userId } = req.params;
@@ -45,7 +52,7 @@ export const userGamesController = {
   },
 
   // Submit or update a rating
-  submitRating: async (req: Request<object, {}, RatingRequest>, res: Response) => {
+  submitGameRating: async (req: Request<object, {}, gameRatingRequest>, res: Response) => {
     const { username, gameId, rating, status } = req.body;
     console.log("Request to /api/ratings");
 
@@ -208,5 +215,113 @@ export const userGamesController = {
       console.error('Error removing game from collection:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
-  }
+  },
+
+  // Get user anime
+  getUserAnimes: async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    console.log("Request to /api/userAnime/:userId/anime");
+    console.log("User ID from params:", userId);
+
+    try {
+      const userAnime = await prisma.userAnime.findMany({
+        where: { userId: parseInt(userId) },
+        select: {
+          anime: true,
+        }
+      });
+
+      if (!userAnime || userAnime.length === 0) {
+        return res.json([]);
+      }
+
+      const combinedAnime = userAnime.map((userAnimeEntry) => ({
+        animeId: userAnimeEntry.anime.id,
+        user_rating: userAnimeEntry.anime.rating,
+        user_status: userAnimeEntry.anime.status
+      }));
+
+      res.status(200).json(combinedAnime);
+    } catch (error) {
+      console.error('Error retrieving user anime:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+
+  // Submit or update a rating for anime
+  submitAnimeRating: async (req: Request<object, {}, animeRatingRequest>, res: Response) => {
+    const { username, animeId, rating, status } = req.body;
+    console.log("Request to /api/userAnime/ratings");
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: { username }
+      });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Upsert the user's rating/status for the anime
+      await prisma.userAnime.upsert({
+        where: {
+          userId_animeId: {
+            userId: user.id,
+            animeId: animeId
+          }
+        },
+        update: {
+          rating,
+          status
+        },
+        create: {
+          userId: user.id,
+          animeId: animeId,
+          rating,
+          status
+        }
+      });
+
+      // Update aggregate site fields in the Anime table
+      // 1. Get all user ratings for this anime
+      const allUserAnimes = await prisma.userAnime.findMany({
+        where: { animeId: animeId },
+        select: { rating: true, status: true }
+      });
+      const ratingsArr = allUserAnimes.map(ua => ua.rating).filter(r => typeof r === 'number');
+      const ratingCount = ratingsArr.length;
+      const avgRating = ratingCount > 0 ? ratingsArr.reduce((a, b) => a + (b || 0), 0) / ratingCount : 0;
+      // 2. Build ratings breakdown (e.g., { '1': 2, '2': 5, ... })
+      const ratingsBreakdown: Record<string, number> = {};
+      for (const r of ratingsArr) {
+        if (typeof r === 'number') {
+          const key = r.toString();
+          ratingsBreakdown[key] = (ratingsBreakdown[key] || 0) + 1;
+        }
+      }
+      // 3. Count added_by_status
+      const addedByStatus: Record<string, number> = {};
+      for (const ua of allUserAnimes) {
+        if (ua.status) {
+          addedByStatus[ua.status] = (addedByStatus[ua.status] || 0) + 1;
+        }
+      }
+      // 4. Update the Anime table (site aggregate fields only)
+      await prisma.anime.update({
+        where: { id: animeId },
+        data: {
+          site_rating: avgRating,
+          site_ratings_count: ratingCount,
+          site_ratings: ratingsBreakdown,
+          site_reviews_count: 0, // update if/when you add reviews
+          site_added: ratingCount,
+          site_added_by_status: addedByStatus
+        }
+      });
+
+      res.status(200).json({ message: 'Anime rating submitted successfully' });
+    } catch (error) {
+      console.error('Error submitting anime rating:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
 };

@@ -33,28 +33,52 @@ const SearchPage = () => {
       const response = await axios.get(`${API_BASE_URL}/api/games/search`, {
         params: { query: text },
       });
-      setResults(response.data);
+      const animeResponse = await axios.get(`${API_BASE_URL}/api/anime/search`, {
+        params: { query: text },
+      });
+
+      // Filter out any null or undefined results before combining
+      const validGameResults = response.data.filter(item => item != null);
+      const validAnimeResults = animeResponse.data.filter(item => item != null);
+
+      const combinedResults = [
+        ...validGameResults.map(game => ({ ...game, type: 'game' })),
+        ...validAnimeResults.map(anime => ({ ...anime, type: 'anime' }))
+      ];
+
+      // Add checks for the existence of the name property before sorting
+      combinedResults.sort((a, b) => {
+        const nameA = a?.name || ''; // Use empty string if name is missing
+        const nameB = b?.name || '';
+        return nameA.localeCompare(nameB);
+      });
+
+      setResults(combinedResults);
     } catch (error) {
       console.error('Error fetching search results:', error);
     }
   };
 
-  const handleGameClick = (game) => {
-    navigate(`/game/${game.id}`, { state: { game } });
+  const handleItemClick = (item) => {
+    if (item.type === 'game') {
+      navigate(`/game/${item.id}`, { state: { game: item } });
+    } else if (item.type === 'anime') {
+      navigate(`/anime/${item.id}`, { state: { anime: item } });
+    }
   };
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Paper elevation={3} sx={{ p: 3, bgcolor: 'background.paper' }}>
         <Typography variant="h4" component="h1" gutterBottom align="center">
-          Search Games
+          Search for Content!
         </Typography>
 
         <Box sx={{ mb: 3 }}>
           <TextField
             fullWidth
             variant="outlined"
-            placeholder="Type game name..."
+            placeholder="Type name of content..."
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
             InputProps={{
@@ -68,11 +92,11 @@ const SearchPage = () => {
         </Box>
 
         <List>
-          {results.map((game) => (
-            <ListItem key={game.id} disablePadding divider>
-              <ListItemButton onClick={() => handleGameClick(game)}>
+          {results.map((result) => (
+            <ListItem key={result.type + '-' + result.id} disablePadding divider>
+              <ListItemButton onClick={() => handleItemClick(result)}>
                 <ListItemText 
-                  primary={game.name}
+                  primary={result.type === 'game' ? result.name : result.title}
                   primaryTypographyProps={{
                     sx: { color: 'text.primary' }
                   }}

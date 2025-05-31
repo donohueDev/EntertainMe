@@ -1,23 +1,27 @@
-// import express from "express";
-// import { animeController } from "../controllers/animeController";
+import express from "express";
+import { animeController } from "../controllers/animeController";
 
-// const router = express.Router();
+const router = express.Router();
 
-// // POST request to fetch and insert anime from the API
-// router.post("/anime", animeController.loadAnimeFromApi);
+// POST request to fetch and insert anime from the API
+router.post("/anime", animeController.loadAnimeFromApi);
 
-// // GET all anime
-// router.get("/", animeController.getAllAnime);
+// GET all anime
+router.get("/", animeController.getAllAnime);
 
-// // GET anime by ID
+// GET top 50 anime (must be before :id and :slug)
+router.get("/top", animeController.getTop50Anime);
+
+// Search anime by query
+router.get("/search", animeController.searchAnime);
+
+// GET anime by slug
+router.get("/:slug", animeController.getAnimeBySlug);
+
+// GET anime by ID
 // router.get("/:id", animeController.getAnimeById);
 
-// // Search anime by query
-// router.get("/search", animeController.searchAnime);
+// Update top anime
+router.post("/update-top-anime", animeController.updateTopAnime);
 
-// router.get("/top", animeController.getTopAnime);
-
-// // Test route to check database connection
-// router.get("/test", animeController.testConnection);
-
-// export default router;
+export default router;

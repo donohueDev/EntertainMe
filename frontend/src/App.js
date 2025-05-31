@@ -14,6 +14,7 @@ import SearchPage from './pages/searchPage';
 import LoginPage from './pages/LoginPage';
 import Register from './pages/RegisterPage';
 import AccountDashboard from './pages/AccountDashboard';
+import AnimeDetailPage from './pages/animeDetailPage';
 
 // Create dark theme
 const darkTheme = createTheme({
@@ -110,6 +111,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } 
       />
+      <Route path="/anime/:slug" element={<AnimeDetailPage />} />
     </Routes>
   );
 };

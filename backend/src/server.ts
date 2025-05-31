@@ -5,8 +5,9 @@ import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import RAWGGamesRouter from './routes/games';
 import { accountRouter } from './routes/auth';
-import userGamesRoute from './routes/userGames';
-// import animeRouter from '../routes/anime';
+import userGames from './routes/userGames';
+import userAnime from './routes/userAnime';
+import animeRouter from './routes/anime';
 // import searchRouter from '../routes/search';
 // import moviesRouter from '../routes/movies';
 // import showsRouter from '../routes/shows';
@@ -74,10 +75,10 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 
 // Set up the routes
 app.use('/api/games', RAWGGamesRouter);
-app.use('/api/userGames', userGamesRoute);
+app.use('/api/userGames', userGames);
 app.use('/api/accounts', accountRouter);
-
-// app.use('/api/anime', animeRouter);
+app.use('/api/anime', animeRouter);
+app.use('/api/userAnime', userAnime);
 // app.use('/api/search', searchRouter);
 // app.use('/api/movies', moviesRouter);
 // app.use('/api/shows', showsRouter);

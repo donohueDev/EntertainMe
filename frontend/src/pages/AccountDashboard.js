@@ -1,9 +1,10 @@
 // accountDashboard.js is used to display reviewed games to user
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/userContext';
+import useFetchUserContentData from '../hooks/useFetchUserContentData';
 import API_BASE_URL from '../config';
+import axios from 'axios';
 import {
   Box,
   Typography,
@@ -36,43 +37,30 @@ const AccountDashboard = () => {
   const [filteredGames, setFilteredGames] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
-  const { username } = useParams();
   const { isAuthenticated, getUserInfo, logout } = useUser();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [gameToDelete, setGameToDelete] = useState(null);
 
-  // Fetch user's games when component mounts
+  // Use the reusable hook to fetch user's games
+  const {
+    userContentData: userGames,
+    loading: gamesLoading,
+    error: gamesError
+  } = useFetchUserContentData({
+    isAuthenticated,
+    getUserInfo,
+    contentId: null, // null means fetch all for this type
+    contentType: 'games'
+  });
+
   useEffect(() => {
-    const fetchUserGames = async () => {
-      if (!isAuthenticated) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const userInfo = getUserInfo();
-        if (!userInfo?.userId) {
-          throw new Error('User information not found');
-        }
-
-        // Verify that the username in URL matches the logged-in user
-        if (userInfo.username !== username) {
-          throw new Error('Unauthorized access');
-        }
-
-        const response = await axios.get(`${API_BASE_URL}/api/userGames/${userInfo.userId}/games`);
-        setGames(response.data);
-        setFilteredGames(response.data);
-      } catch (error) {
-        console.error('Failed to fetch user games:', error);
-        setError('Failed to load your games. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserGames();
-  }, [isAuthenticated, getUserInfo, username]);
+    if (userGames && Array.isArray(userGames)) {
+      setGames(userGames);
+      setFilteredGames(userGames);
+    }
+    setLoading(gamesLoading);
+    setError(gamesError);
+  }, [userGames, gamesLoading, gamesError]);
 
   // Filter games based on status
   const handleStatusFilterChange = (event) => {

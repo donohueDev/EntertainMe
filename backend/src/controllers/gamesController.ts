@@ -103,17 +103,14 @@ const isDuplicateGame = async (game: Game): Promise<boolean> => {
 // Function to process and insert game data into the database
 const processGameData = async (game: Game): Promise<boolean> => {
   try {
-    // Add duplicate check at the beginning
     if (await isDuplicateGame(game)) {
       console.log(`Skipping duplicate game: ${game.name}`);
       return false;
     }
-
-    if (!game?.id || !game.slug || !game.name || !game.released) {
+    if (!game?.id || !game.slug || !game.name) {
       console.error('Skipping invalid game data:', game);
       return false;
     }
-
     const { data: detailedGame } = await axios.get<Game>(`https://api.rawg.io/api/games/${game.id}`, {
       params: { key: process.env.RAWG_API_KEY }
     });
@@ -121,7 +118,6 @@ const processGameData = async (game: Game): Promise<boolean> => {
       console.error(`No detailed data found for game ID ${game.id}`);
       return false;
     }
-
     let esrbRatingId = null;
     if (detailedGame.esrb_rating) {
       const esrbRating = await prisma.esrbRating.upsert({
@@ -138,17 +134,19 @@ const processGameData = async (game: Game): Promise<boolean> => {
       });
       esrbRatingId = esrbRating.id;
     }
-
-    // Check for explicit content
     const explicitTag = detailedGame.tags?.find(tag => 
       EXPLICIT_CONTENT_TAGS.includes(tag.slug.toLowerCase())
     );
     const hasExplicitTags = !!explicitTag;
     const isExplicit = hasExplicitTags;
-
-    // Create or update the game
+    // Use compound unique for upsert
     const createdGame = await prisma.game.upsert({
-      where: { id: detailedGame.id },
+      where: {
+        api_source_api_source_id: {
+          api_source: 'rawg',
+          api_source_id: detailedGame.id.toString(),
+        }
+      },
       update: {
         slug: detailedGame.slug,
         name: detailedGame.name,
@@ -156,8 +154,8 @@ const processGameData = async (game: Game): Promise<boolean> => {
         tba: detailedGame.tba,
         background_image: detailedGame.background_image,
         rawg_rating: detailedGame.rating,
-        
-        // Initialize site ratings
+        api_source: 'rawg',
+        api_source_id: detailedGame.id.toString(),
         rating: 0,
         rating_top: 5,
         ratings: {},
@@ -170,18 +168,14 @@ const processGameData = async (game: Game): Promise<boolean> => {
           completed: 0,
           dropped: 0,
         },
-        // Keep external metadata
         metacritic: detailedGame.metacritic,
         playtime: detailedGame.playtime,
         updated: detailedGame.updated ? new Date(detailedGame.updated) : null,
         esrb_rating_id: esrbRatingId,
         description_raw: detailedGame.description_raw,
-
-        
-        // Handle platforms
         platforms: {
           deleteMany: {},
-          create: detailedGame.platforms?.map(p => ({
+          create: (detailedGame.platforms || []).map(p => ({
             platform: {
               connectOrCreate: {
                 where: { id: p.platform.id },
@@ -195,13 +189,11 @@ const processGameData = async (game: Game): Promise<boolean> => {
             released_at: p.released_at,
             requirements_min: p.requirements?.minimum,
             requirements_rec: p.requirements?.recommended
-          })) || []
+          }))
         },
-
-        // Handle tags and adult content (existing code)
         tags: {
           deleteMany: {},
-          create: detailedGame.tags?.map(tag => ({
+          create: (detailedGame.tags || []).map(tag => ({
             tag: {
               connectOrCreate: {
                 where: { slug: tag.slug },
@@ -211,12 +203,12 @@ const processGameData = async (game: Game): Promise<boolean> => {
                 }
               }
             }
-          })) || []
+          }))
         },
         adultContent: isExplicit ? {
           upsert: {
             create: {
-              reason: getExplicitReason( hasExplicitTags),
+              reason: getExplicitReason(hasExplicitTags),
               trigger_tag: explicitTag?.slug || null
             },
             update: {
@@ -227,14 +219,14 @@ const processGameData = async (game: Game): Promise<boolean> => {
         } : undefined
       },
       create: {
-        id: detailedGame.id,
         slug: detailedGame.slug,
         name: detailedGame.name,
         released: detailedGame.released ? new Date(detailedGame.released) : null,
         tba: detailedGame.tba,
         background_image: detailedGame.background_image,
         rawg_rating: detailedGame.rating,
-        // Initialize our own site-specific fields
+        api_source: 'rawg',
+        api_source_id: detailedGame.id.toString(),
         rating: 0,
         rating_top: 5,
         ratings: {},
@@ -246,14 +238,13 @@ const processGameData = async (game: Game): Promise<boolean> => {
           completed: 0,
           dropped: 0,
         },
-        // Keep external metadata
         metacritic: detailedGame.metacritic,
         playtime: detailedGame.playtime,
         updated: detailedGame.updated ? new Date(detailedGame.updated) : null,
         esrb_rating_id: esrbRatingId,
         description_raw: detailedGame.description_raw,
         platforms: {
-          create: detailedGame.platforms?.map(p => ({
+          create: (detailedGame.platforms || []).map(p => ({
             platform: {
               connectOrCreate: {
                 where: { id: p.platform.id },
@@ -267,10 +258,10 @@ const processGameData = async (game: Game): Promise<boolean> => {
             released_at: p.released_at,
             requirements_min: p.requirements?.minimum,
             requirements_rec: p.requirements?.recommended
-          })) || []
+          }))
         },
         tags: {
-          create: detailedGame.tags?.map(tag => ({
+          create: (detailedGame.tags || []).map(tag => ({
             tag: {
               connectOrCreate: {
                 where: { slug: tag.slug },
@@ -280,18 +271,17 @@ const processGameData = async (game: Game): Promise<boolean> => {
                 }
               }
             }
-        })) || []
+          }))
         },
         adultContent: isExplicit ? {
           create: {
             reason: getExplicitReason(hasExplicitTags),
             trigger_tag: explicitTag?.slug || null
           }
-        } : undefined,
+        } : undefined
       }
     });
-
-    console.log(`Successfully ${game.id === createdGame.id ? 'inserted' : 'updated'} game ${detailedGame.name} (ID: ${createdGame.id})`);
+    console.log(`Successfully upserted game ${detailedGame.name} (RAWG ID: ${detailedGame.id})`);
     return true;
   } catch (error) {
     console.error('Error processing game data:', error);
@@ -313,7 +303,7 @@ export const gamesController = {
       const pageSize = 40;
       let totalGamesInserted = 0;
       let duplicatesSkipped = 0;
-      const targetGames = 500;
+      const targetGames = 100;
       const maxRetries = 3;
       const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
       
@@ -579,7 +569,7 @@ export const gamesController = {
       const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
       const candidateGames: Array<{id: number, name: string, combinedScore: number}> = [];
       
-      const maxPages = 3; // Stop after this many pages if not enough candidates
+      const maxPages = 4; // Stop after this many pages if not enough candidates
       // Clear existing top games
       await prisma.top50Games.deleteMany({});
       console.log('Cleared existing top 50 games from database');
@@ -628,7 +618,21 @@ export const gamesController = {
                     const normalizedRawg = game.rating * 20;
                     const combinedScore = (normalizedRawg + game.metacritic) / 2;
                     if (combinedScore > 0) {
-                      candidateGames.push({ id: game.id, name: game.name, combinedScore });
+                      // After upsert, get the internal DB id for the game
+                      const dbGame = await prisma.game.findUnique({
+                        where: {
+                          api_source_api_source_id: {
+                            api_source: 'rawg',
+                            api_source_id: game.id.toString(),
+                          }
+                        }
+                      });
+                      // Only push if dbGame is not null
+                      if (dbGame) {
+                        candidateGames.push({ id: dbGame.id, name: game.name, combinedScore });
+                      } else {
+                        console.warn(`Could not find dbGame for RAWG ID: ${game.id}`);
+                      }
                     }
                   }
                 } else{
@@ -669,11 +673,11 @@ export const gamesController = {
       }
       // Sort candidate games by combined score
       candidateGames.sort((a, b) => b.combinedScore - a.combinedScore);
-      // Take as many as we have (up to 50)
-      const topGames = candidateGames.slice(0, 50);
-      // If we have less than 50, fill the rest with highest rawg-rated games from the local DB
-      if (topGames.length < 50) {
-        const needed = 50 - topGames.length;
+      // Take as many as we have (up to 100)
+      const topGames = candidateGames.slice(0, 100);
+      // If we have less than 100, fill the rest with highest rawg-rated games from the local DB
+      if (topGames.length < 100) {
+        const needed = 100 - topGames.length;
         // Get highest rated games from DB that are not already in topGames
         const extraGames = await prisma.game.findMany({
           where: {
@@ -691,13 +695,17 @@ export const gamesController = {
           topGames.push({ id: g.id, name: g.name, combinedScore: normalizedRawg });
         }
       }
-      // Insert top games into the database
-      const topGameInserts = topGames.map((game, index) => ({
-        rank: index + 1,
-        game_id: game.id,
-        value: game.combinedScore // Store the combined score in the value field
+      // Prepare topGameInserts array for createMany
+      const topGameInserts = topGames.map((g, idx) => ({
+        game_id: g.id,
+        rank: idx + 1
       }));
-      await prisma.top50Games.createMany({ data: topGameInserts });
+
+      // Insert top games into the database using a transaction
+      await prisma.$transaction([
+        prisma.top50Games.deleteMany({}),
+        prisma.top50Games.createMany({ data: topGameInserts })
+      ]);
       console.log('Inserted top 50 games into database');
       res.status(200).json({ message: 'Top games updated successfully' });
     } catch (error) {
