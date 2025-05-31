@@ -26,7 +26,16 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const { isAuthenticated } = useUser();
+  const { isAuthenticated, getUserInfo } = useUser();
+  const [userInfo, setUserInfo] = useState(null);
+
+  // Get user info when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const info = getUserInfo();
+      setUserInfo(info);
+    }
+  }, [isAuthenticated, getUserInfo]);
 
 
   useEffect(() => {
@@ -385,7 +394,7 @@ const HomePage = () => {
             mb: 2
           }}
         >
-          Welcome to EntertainME
+          Welcome to EntertainME{isAuthenticated ? `, ${userInfo.username}!` : '!'}
         </Typography>
         
         <Typography 

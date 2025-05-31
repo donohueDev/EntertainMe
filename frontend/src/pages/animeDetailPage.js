@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useUser } from '../context/userContext';
 import API_BASE_URL from '../config';
@@ -28,11 +28,11 @@ const AnimeDetailPage = () => {
   const { isAuthenticated, getUserInfo } = useUser();
   const [status, setStatus] = useState('');
   const [rating, setRating] = useState(0);
-
-  // State to manage the displayed image URL
+  const [youtubeApiReady, setYoutubeApiReady] = useState(false);
   const [displayedImageUrl, setDisplayedImageUrl] = useState('');
-
-  // Ref to track if fetch attempt for YouTube thumbnail has been made and if warning has been logged for this trailer
+  
+  // Refs
+  const playerRef = useRef(null);
   const fetchStatusRef = useRef({
     attempted: false,
     warningLogged: false,
@@ -74,6 +74,88 @@ const AnimeDetailPage = () => {
     usernameField: 'username',
     idField: 'animeId'
   });
+
+  const initializePlayer = useCallback(() => {
+    if (window.YT && anime?.trailer?.embed_url && !playerRef.current) {
+      const videoId = anime.trailer.embed_url.match(/embed\/([^?/]+)/)?.[1];
+      if (videoId) {
+        const playerContainer = document.getElementById('youtube-player');
+        if (playerContainer) {
+          playerRef.current = new window.YT.Player('youtube-player', {
+            videoId,
+            playerVars: {
+              autoplay: 1,
+              modestbranding: 1,
+              rel: 0
+            },
+            events: {
+              onStateChange: (event) => {
+                if (event.data === window.YT.PlayerState.ENDED) {
+                  // Safely cleanup player when video ends
+                  if (playerRef.current) {
+                    playerRef.current.destroy();
+                    playerRef.current = null;
+                  }
+                  setShowTrailer(false);
+                }
+              }
+            }
+          });
+        }
+      }
+    }
+  }, [anime?.trailer?.embed_url]);
+
+  // Handle play button click
+  const handlePlayClick = useCallback(() => {
+    setShowTrailer(true);
+    if (youtubeApiReady) {
+      // Use setTimeout to ensure the player div is rendered before initialization
+      setTimeout(initializePlayer, 0);
+    }
+  }, [youtubeApiReady, initializePlayer]);
+
+  // Load YouTube IFrame API
+  useEffect(() => {
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      window.onYouTubeIframeAPIReady = () => {
+        setYoutubeApiReady(true);
+        if (showTrailer) {
+          initializePlayer();
+        }
+      };
+    } else {
+      setYoutubeApiReady(true);
+    }
+
+    return () => {
+      // Cleanup on unmount
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
+    };
+  }, [showTrailer, initializePlayer]);
+
+  // Cleanup player when trailer is hidden
+  useEffect(() => {
+    if (!showTrailer && playerRef.current) {
+      playerRef.current.destroy();
+      playerRef.current = null;
+    }
+  }, [showTrailer]);
+
+  // Reinitialize player when anime changes and trailer is showing
+  useEffect(() => {
+    if (showTrailer && youtubeApiReady && !playerRef.current) {
+      initializePlayer();
+    }
+  }, [showTrailer, youtubeApiReady, initializePlayer]);
 
   // Set rating and status from userAnimeData
   useEffect(() => {
@@ -201,61 +283,56 @@ const AnimeDetailPage = () => {
           paddingTop: '56.25%' // 16:9 aspect ratio
         }}>
           {showTrailer && anime.trailer?.embed_url ? (
-    <iframe
-      src={anime.trailer.embed_url}
-      allow="autoplay; encrypted-media; fullscreen"
-      allowFullScreen
-      loading="lazy"
-      title={`${anime.title} trailer`}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        bottom: 0,
-        right: 0,
-        width: '100%',
-        height: '100%',
-        border: 0
-      }}
-    />
-  ) : (
-    <>
-      <CardMedia
-        component="img"
-        image={displayedImageUrl}
-        alt={anime.title}
-        sx={{ 
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'fill',
-          borderRadius: 1 
-        }}
-      />
+            <Box
+              id="youtube-player"
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                bottom: 0,
+                right: 0,
+                width: '100%',
+                height: '100%'
+              }}
+            />
+          ) : (
+            <>
+              <CardMedia
+                component="img"
+                image={displayedImageUrl}
+                alt={anime.title}
+                sx={{ 
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'fill',
+                  borderRadius: 1 
+                }}
+              />
               {anime.trailer?.embed_url && (
-        <IconButton
-          aria-label="play trailer"
-          onClick={() => setShowTrailer(true)}
-          sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            color: 'white',
-            background: 'rgba(0,0,0,0.5)',
-            fontSize: 80,
-            '&:hover': { background: 'rgba(0,0,0,0.7)' },
-          }}
-          size="large"
-        >
-          <PlayCircleOutlineIcon sx={{ fontSize: 80 }} />
-        </IconButton>
-      )}
-    </>
-  )}
-</Box>
+                <IconButton
+                  aria-label="play trailer"
+                  onClick={handlePlayClick}
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    color: 'white',
+                    background: 'rgba(0,0,0,0.5)',
+                    fontSize: 80,
+                    '&:hover': { background: 'rgba(0,0,0,0.7)' },
+                  }}
+                  size="large"
+                >
+                  <PlayCircleOutlineIcon sx={{ fontSize: 80 }} />
+                </IconButton>
+              )}
+            </>
+          )}
+        </Box>
         {/* Anime details */}
         <CardContent>
           <Box
