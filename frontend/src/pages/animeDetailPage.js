@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useUser } from '../context/userContext';
 import API_BASE_URL from '../config';
@@ -29,7 +29,17 @@ const AnimeDetailPage = () => {
   const [status, setStatus] = useState('');
   const [rating, setRating] = useState(0);
 
-  // Fetch anime details using custom hook
+  // State to manage the displayed image URL
+  const [displayedImageUrl, setDisplayedImageUrl] = useState('');
+
+  // Ref to track if fetch attempt for YouTube thumbnail has been made and if warning has been logged for this trailer
+  const fetchStatusRef = useRef({
+    attempted: false,
+    warningLogged: false,
+    currentTrailerUrl: null,
+  });
+
+  // Fetch anime details 
   const {
     data: anime,
     loading: animeLoading
@@ -78,6 +88,97 @@ const AnimeDetailPage = () => {
     window.scrollTo(0, 0);
   }, []);
 
+  // Manage image display and YouTube thumbnail loading
+  useEffect(() => {
+    if (!anime) return;
+
+    const fallbackImageUrl = anime.images?.webp?.large_image_url || 
+      anime.images?.jpg?.large_image_url || 
+      '/placeholder-image.jpg';
+    
+    const currentTrailerEmbedUrl = anime?.trailer?.embed_url || null;
+
+    // Reset status when anime changes
+    if (fetchStatusRef.current.currentTrailerUrl !== currentTrailerEmbedUrl) {
+      fetchStatusRef.current = {
+        attempted: false,
+        warningLogged: false,
+        currentTrailerUrl: currentTrailerEmbedUrl
+      };
+    }
+
+    // If no trailer embed URL, use fallback immediately
+    if (!currentTrailerEmbedUrl) {
+      setDisplayedImageUrl(fallbackImageUrl);
+      return;
+    }
+
+    // If fetch already attempted for this specific trailer URL, do nothing further
+    if (fetchStatusRef.current.attempted) {
+      return;
+    }
+
+    // Get YouTube video ID from embed URL
+    const getYouTubeVideoId = (embedUrl) => {
+      if (!embedUrl) return null;
+      const match = embedUrl.match(/embed\/([^?/]+)/);
+      return match ? match[1] : null;
+    };
+
+    // Get YouTube thumbnail URL (maxresdefault first)
+    const getYouTubeThumbnailUrl = (videoId) => {
+      if (!videoId) return null;
+      return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    };
+
+    const videoId = getYouTubeVideoId(currentTrailerEmbedUrl);
+    const youtubeThumbnail = getYouTubeThumbnailUrl(videoId);
+
+    // Set fallback image first while we try to load YouTube thumbnail
+    setDisplayedImageUrl(fallbackImageUrl);
+
+    if (youtubeThumbnail) {
+      // Mark fetch attempted for this trailer URL *before* initiating the fetch
+      fetchStatusRef.current.attempted = true;
+
+      fetch(youtubeThumbnail)
+        .then(response => {
+          // Only proceed if this fetch attempt is for the current trailer URL
+          if (fetchStatusRef.current.currentTrailerUrl === currentTrailerEmbedUrl) {
+            if (!response.ok) {
+              if (!fetchStatusRef.current.warningLogged) {
+                console.warn(`YouTube thumbnail fetch failed with status ${response.status} for video ID ${videoId}. Using database image.`);
+                fetchStatusRef.current.warningLogged = true;
+              }
+              // Fallback image is already set, no need to set it again
+            } else {
+              // YouTube thumbnail loaded successfully, update the displayed image
+              setDisplayedImageUrl(youtubeThumbnail);
+              console.log(`YouTube thumbnail loaded successfully for video ID ${videoId}`);
+            }
+          }
+        })
+        .catch(error => {
+          // Only log error if this fetch attempt is for the current trailer URL
+          if (fetchStatusRef.current.currentTrailerUrl === currentTrailerEmbedUrl) {
+            if (!fetchStatusRef.current.warningLogged) {
+              console.warn(`YouTube thumbnail fetch failed for video ID ${videoId}. Using database image. Error: ${error}`);
+              fetchStatusRef.current.warningLogged = true;
+            }
+            // Fallback image is already set, no need to set it again
+          }
+        });
+    } else {
+      if (!fetchStatusRef.current.warningLogged) {
+        console.warn('Could not get YouTube thumbnail URL.');
+        fetchStatusRef.current.warningLogged = true;
+      }
+      // Mark attempted even if URL could not be derived, to prevent re-attempt
+      fetchStatusRef.current.attempted = true;
+      // Fallback image is already set, no need to set it again
+    }
+  }, [anime]);  // Re-run effect if anime changes
+
   if (animeLoading) {
     return (
       <Container>
@@ -90,55 +191,50 @@ const AnimeDetailPage = () => {
 
   if (!anime) return <div>Loading...</div>;
 
-  const trailerEmbedUrl = anime.trailer?.embed_url;
-
-  // Get YouTube video ID from embed URL
-  const getYouTubeVideoId = (embedUrl) => {
-    if (!embedUrl) return null;
-    const match = embedUrl.match(/embed\/([^?/]+)/);
-    return match ? match[1] : null;
-  };
-
-  // Get YouTube thumbnail URL
-  const getYouTubeThumbnailUrl = (videoId) => {
-    if (!videoId) return null;
-    // Try maxresdefault first (highest quality)
-    return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-  };
-
-  const videoId = getYouTubeVideoId(trailerEmbedUrl);
-  const youtubeThumbnail = getYouTubeThumbnailUrl(videoId);
-
-  const posterImg =
-    youtubeThumbnail ||
-    (anime.images?.webp?.large_image_url ||
-      anime.images?.jpg?.large_image_url ||
-      '/placeholder-image.jpg');
-
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Card sx={{ bgcolor: 'background.paper' }}>
         {/* Trailer section with play overlay */}
-        <Box sx={{ position: 'relative', width: '100%', height: 400, borderRadius: 1, boxShadow: 3, mb: 2, overflow: 'hidden', background: '#000' }}>
-          {showTrailer && trailerEmbedUrl ? (
-    <CardMedia
-      component="iframe"
-      src={`${trailerEmbedUrl}?enablejsapi=0&controls=1`}
-      allow="autoplay; encrypted-media"
+        <Box sx={{ 
+          position: 'relative', 
+          width: '100%',
+          paddingTop: '56.25%' // 16:9 aspect ratio
+        }}>
+          {showTrailer && anime.trailer?.embed_url ? (
+    <iframe
+      src={anime.trailer.embed_url}
+      allow="autoplay; encrypted-media; fullscreen"
       allowFullScreen
       loading="lazy"
-      sandbox="allow-same-origin allow-scripts allow-forms allow-presentation"
-              sx={{ width: '100%', height: '100%', border: 0 }}
+      title={`${anime.title} trailer`}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+        width: '100%',
+        height: '100%',
+        border: 0
+      }}
     />
   ) : (
     <>
       <CardMedia
         component="img"
-        image={posterImg}
+        image={displayedImageUrl}
         alt={anime.title}
-                sx={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 1 }}
-              />
-              {trailerEmbedUrl && (
+        sx={{ 
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'fill',
+          borderRadius: 1 
+        }}
+      />
+              {anime.trailer?.embed_url && (
         <IconButton
           aria-label="play trailer"
           onClick={() => setShowTrailer(true)}
