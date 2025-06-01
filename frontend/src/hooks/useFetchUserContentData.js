@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import API_BASE_URL from '../config';
 
 // Cache configuration
 const CACHE_TTL = 60 * 1000; // 1 minute in milliseconds
@@ -45,7 +46,7 @@ export const invalidateUserDataCache = (userId, contentType, contentId) => {
  * @param {Object} params
  * @param {boolean} params.isAuthenticated - Whether the user is authenticated
  * @param {function} params.getUserInfo - Function to get user info (should return a user object with userId)
- * @param {string|number} params.contentId - The ID of the content (gameId, animeId, etc.)
+ * @param {string|number} paramfs.contentId - The ID of the content (gameId, animeId, etc.)
  * @param {string} params.contentType - The type of content ('games', 'anime', 'movies', etc.)
  * @returns {object} { userContentData, loading, error, refetch }
  */
@@ -77,26 +78,28 @@ const useFetchUserContentData = ({ isAuthenticated, getUserInfo, contentId, cont
       if (contentId) {
         // Fetch a specific content item for the user
         const routeMap = {
-          games: `/api/userGames/${userInfo.userId}/games/${contentId}`,
-          anime: `/api/userAnimes/${userInfo.userId}/anime/${contentId}`,
-          movies: `/api/userMovies/${userInfo.userId}/movies/${contentId}`,
+          games: `${API_BASE_URL}/api/userGames/${userInfo.userId}/games/${contentId}`,
+          anime: `${API_BASE_URL}/api/userAnimes/${userInfo.userId}/anime/${contentId}`,
+          movies: `${API_BASE_URL}/api/userMovies/${userInfo.userId}/movies/${contentId}`,
         };
         url = routeMap[contentType];
         if (!url) throw new Error('Unsupported content type');
       } else {
         // Fetch all content of this type for the user
         const routeMap = {
-          games: `/api/userGames/${userInfo.userId}/games`,
-          anime: `/api/userAnimes/${userInfo.userId}/anime`,
-          movies: `/api/userMovies/${userInfo.userId}/movies`,
+          games: `${API_BASE_URL}/api/userGames/${userInfo.userId}/games`,
+          anime: `${API_BASE_URL}/api/userAnimes/${userInfo.userId}/anime`,
+          movies: `${API_BASE_URL}/api/userMovies/${userInfo.userId}/movies`,
         };
         url = routeMap[contentType];
         if (!url) throw new Error('Unsupported content type');
       }
-
+      // console.log(`Fetching user content data from: ${url}`);
+      // Make the API call
       const response = await axios.get(url);
       setCachedData(cacheKey, response.data);
       setUserContentData(response.data);
+      // console.log('User content data fetched successfully:', response.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch user content data.');
     } finally {

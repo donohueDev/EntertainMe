@@ -134,7 +134,7 @@ const Navigation = () => {
             vertical: 'top',
             horizontal: 'right',
           }}
-          Paper={{
+          paper={{
             elevation: 0,
             sx: {
               overflow: 'visible',
