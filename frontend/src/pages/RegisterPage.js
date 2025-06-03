@@ -139,7 +139,7 @@ const RegisterPage = () => {
               background: 'linear-gradient(90deg, transparent, goldenrod, transparent)'
             }
           }}>
-            Welcome to EntertainME!
+            Join the Adventure
           </Typography>
 
           <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
