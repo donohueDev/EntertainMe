@@ -297,7 +297,12 @@ const AnimeDetailPage = () => {
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
-      <Card sx={{ bgcolor: 'background.paper' }}>
+      <Card sx={{ 
+        '&:hover': {
+          transform: 'none',
+          boxShadow: 'none'
+        }
+      }}>
         {/* Trailer section with play overlay */}
         <Box sx={{ 
           position: 'relative', 
@@ -421,10 +426,10 @@ const AnimeDetailPage = () => {
             </Typography>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
-                <Typography variant="body1" sx={{ color: 'white', mb: 2 }}>
+                <Typography variant="body1" sx={{ mb: 2 }}>
                   <strong>Episodes:</strong> {anime.episodes ?? 'N/A'}
                 </Typography>
-                <Typography variant="body1" sx={{ color: 'white', mb: 2 }}>
+                <Typography variant="body1" sx={{ mb: 2 }}>
                   <strong>Status:</strong> {anime.status ?? 'N/A'}
                 </Typography>
                 <Typography variant="body1" sx={{ color: 'white', mb: 2 }}>
@@ -482,7 +487,6 @@ const AnimeDetailPage = () => {
           ) : (
             <LoginPromptBox
               contentType="anime"
-              actions={["rate", "track", "build your collection"]}
             />
           )}
 

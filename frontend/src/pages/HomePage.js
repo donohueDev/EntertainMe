@@ -20,6 +20,7 @@ import { Title } from '../components/Title';
 import { useUser } from '../context/userContext';
 import HorizontalScroller from '../components/HorizontalScroller';
 import Footer from '../components/Footer';
+import { commonStyles } from '../theme';
 
 const HomePage = () => {
   const [games, setGames] = useState([]);
@@ -234,10 +235,8 @@ const HomePage = () => {
     sessionStorage.setItem('homeScrollY', window.scrollY.toString());
   };
 
-  // Move renderCard functions here so they're always in scope
-  const renderGameCard = (gameEntry, idx) => (
+  const GameCard = React.memo(({ gameEntry, onClick }) => (
     <Card
-      key={`${gameEntry.rank}-${gameEntry.game.id}`}
       sx={{
         width: 150,
         height: 240,
@@ -246,22 +245,11 @@ const HomePage = () => {
         justifyContent: 'space-between',
         cursor: 'pointer',
         boxSizing: 'border-box',
-        '&:hover': {
-          transform: 'scale(1.03)',
-          transition: 'transform 0.2s',
-          boxShadow: '0 0 15px rgba(224, 224, 224, 0.2)',
-        },
-        backgroundColor: '#1A1A1A',
-        border: '1px solid #424242',
+        ...commonStyles.cardHover,
+        bgcolor: 'background.paper',
+        ...commonStyles.goldenBorder,
       }}
-      onClick={() => {
-        saveScrollPosition();
-        if (gameEntry && gameEntry.game && gameEntry.game.slug) {
-          navigate(`/game/${gameEntry.game.slug}`, {
-            state: { game: gameEntry.game }
-          });
-        }
-      }}
+      onClick={onClick}
     >
       <CardMedia
         component="img"
@@ -270,11 +258,11 @@ const HomePage = () => {
         alt={gameEntry.game.name}
         sx={{
           width: '100%',
-          objectFit: 'cover', // Fill the box, cropping as needed
+          objectFit: 'cover',
           objectPosition: 'center',
           borderTopLeftRadius: 4,
           borderTopRightRadius: 4,
-          backgroundColor: '#222',
+          bgcolor: 'background.paper',
         }}
       />
       <CardContent
@@ -292,7 +280,7 @@ const HomePage = () => {
           sx={{
             fontWeight: 'bold',
             fontFamily: 'sans-serif',
-            color: '#E0E0E0',
+            color: 'text.primary',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             display: '-webkit-box',
@@ -304,11 +292,10 @@ const HomePage = () => {
         </Typography>
       </CardContent>
     </Card>
-  );
+  ));
 
-  const renderAnimeCard = (animeEntry, idx) => (
+  const AnimeCard = React.memo(({ animeEntry, onClick }) => (
     <Card
-      key={`${animeEntry.rank}-${animeEntry.anime.id}`}
       sx={{
         width: 150,
         height: 240,
@@ -317,22 +304,11 @@ const HomePage = () => {
         justifyContent: 'space-between',
         cursor: 'pointer',
         boxSizing: 'border-box',
-        '&:hover': {
-          transform: 'scale(1.03)',
-          transition: 'transform 0.2s',
-          boxShadow: '0 0 15px rgba(224, 224, 224, 0.2)',
-        },
-        backgroundColor: '#1A1A1A',
-        border: '1px solid #424242',
+        ...commonStyles.cardHover,
+        bgcolor: 'background.paper',
+        ...commonStyles.goldenBorder,
       }}
-      onClick={() => {
-        saveScrollPosition();
-        if (animeEntry && animeEntry.anime && animeEntry.anime.slug) {
-          navigate(`/anime/${animeEntry.anime.slug}`, {
-            state: { anime: animeEntry.anime }
-          });
-        }
-      }}
+      onClick={onClick}
     >
       <CardMedia
         component="img"
@@ -349,6 +325,7 @@ const HomePage = () => {
           objectPosition: 'center',
           borderTopLeftRadius: 4,
           borderTopRightRadius: 4,
+          bgcolor: 'background.paper',
         }}
       />
       <CardContent
@@ -366,7 +343,7 @@ const HomePage = () => {
           sx={{
             fontWeight: 'bold',
             fontFamily: 'sans-serif',
-            color: '#E0E0E0',
+            color: 'text.primary',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             display: '-webkit-box',
@@ -378,6 +355,36 @@ const HomePage = () => {
         </Typography>
       </CardContent>
     </Card>
+  ));
+
+  const renderGameCard = (gameEntry) => (
+    <GameCard
+      key={`${gameEntry.rank}-${gameEntry.game.id}`}
+      gameEntry={gameEntry}
+      onClick={() => {
+        saveScrollPosition();
+        if (gameEntry && gameEntry.game && gameEntry.game.slug) {
+          navigate(`/game/${gameEntry.game.slug}`, {
+            state: { game: gameEntry.game }
+          });
+        }
+      }}
+    />
+  );
+
+  const renderAnimeCard = (animeEntry) => (
+    <AnimeCard
+      key={`${animeEntry.rank}-${animeEntry.anime.id}`}
+      animeEntry={animeEntry}
+      onClick={() => {
+        saveScrollPosition();
+        if (animeEntry && animeEntry.anime && animeEntry.anime.slug) {
+          navigate(`/anime/${animeEntry.anime.slug}`, {
+            state: { anime: animeEntry.anime }
+          });
+        }
+      }}
+    />
   );
 
   // Home page layout
@@ -386,14 +393,15 @@ const HomePage = () => {
       display: 'flex',
       flexDirection: 'column',
       minHeight: '100vh',
-      backgroundColor: '#0A1929',
+      bgcolor: 'background.default',
     }}>
     <Container 
       maxWidth="xl" 
       sx={{ 
-        py: 4,
+        pt: 1,
+        pb: 4,
         flex: 1,
-      color: '#E0E0E0',
+        color: 'text.primary',
         display: 'flex',
         flexDirection: 'column',
         mb: 0,
@@ -405,17 +413,38 @@ const HomePage = () => {
       <Paper
         sx={{
           p: 2,
-          mt: 2,
+          mt: 5,
           mb: 3,
-          background: 'linear-gradient(45deg, #0A1929, #1A2B3C)',
-          color: '#FFD700',
-          border: '1px solid #FFD700',
+          bgcolor: 'background.paper',
+          ...commonStyles.goldenBorder,
           borderRadius: 2,
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          boxShadow: '0 0 15px rgba(218, 165, 32, 0.2)',
+          position: 'relative',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '2px',
+            background: 'linear-gradient(90deg, transparent, goldenrod, transparent)'
+          }
         }}
       >
-        <Typography variant="body1" align="center" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-          🚧 Website under construction! Please pardon our progress 🏗️
+        <Typography variant="body1" align="center" sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          gap: 1,
+          fontFamily: "'Montserrat', sans-serif",
+          background: 'linear-gradient(to bottom, #FFFFFF 0%, goldenrod 100%)',
+          backgroundClip: 'text',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          textShadow: '0 0 15px rgba(218, 165, 32, 0.3)',
+          fontWeight: 'bold'
+        }}>
+          🎮 Level 1 Loading... More features unlocking soon! 🎬
         </Typography>
       </Paper>
 
@@ -425,35 +454,69 @@ const HomePage = () => {
           mb: 6,
           p: 4,
           borderRadius: 2,
-          background: 'linear-gradient(45deg, #042454 30%, #374265 90%)',
-          boxShadow: '0 3px 5px 2px rgba(0, 0, 0, .3)',
+          bgcolor: 'background.paper',
+          boxShadow: '0 0 15px rgba(218, 165, 32, 0.1)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           textAlign: 'center',
-          gap: 2
+          gap: 2,
+          ...commonStyles.goldenBorder,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '2px',
+            background: 'linear-gradient(90deg, transparent, goldenrod, transparent)'
+          },
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '2px',
+            background: 'linear-gradient(90deg, transparent, goldenrod, transparent)'
+          }
         }}
       >
         <Typography 
           variant="h3" 
           sx={{ 
             fontWeight: 'bold',
-            fontFamily: 'Varela Round',
-            color: '#ffffff',
-            mb: 2
+            fontFamily: "'Montserrat', sans-serif",
+            ...commonStyles.gradientText,
+            mb: 2,
+            position: 'relative',
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              bottom: '-10px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '60%',
+              height: '2px',
+              background: 'linear-gradient(90deg, transparent, goldenrod, transparent)'
+            }
           }}
         >
           Welcome to EntertainME{isAuthenticated ? `, ${userInfo.username}!` : '!'}
         </Typography>
-
-
         
         <Typography 
           variant="h6" 
           sx={{ 
-            color: '#E0E0E0',
+            color: 'text.primary',
             maxWidth: '800px',
-            mb: 3
+            mb: 3,
+            textAlign: 'center',
+            lineHeight: 1.6,
+            letterSpacing: '0.02em',
+            textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
           }}
         >
           Your personal entertainment companion. Track your favorite games, anime, movies, and shows, rate your experiences, and discover new titles to enjoy. Join our community of fans today!
@@ -468,11 +531,8 @@ const HomePage = () => {
               py: 1.5,
               px: 4,
               fontSize: '1.1rem',
-              backgroundColor: '#4CAF50',
-              '&:hover': {
-                backgroundColor: '#45a049',
-              },
-              boxShadow: '0 3px 5px 2px rgba(0, 0, 0, .2)',
+              ...commonStyles.goldenBorder,
+              ...commonStyles.goldenHover
             }}
           >
             Join Now
@@ -485,16 +545,49 @@ const HomePage = () => {
         items={games}
         renderCard={renderGameCard}
         title="Top 100 Games"
-        sx={{ mb: 4 }}
+        sx={{ 
+          mb: 4,
+          '& .MuiTypography-h4': {
+            color: 'text.primary',
+            fontSize: '3.5rem',
+            fontWeight: 'bold',
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase',
+            textAlign: 'center',
+            textShadow: 
+              `-1px -1px 0 goldenrod,  
+               1px -1px 0 goldenrod,
+               -1px 1px 0 goldenrod,
+               1px 1px 0 goldenrod,
+               0 0 15px rgba(218, 165, 32, 0.5)`,
+            mb: 3
+          }
+        }}
       />
 
       {/* Top 50 Anime Section */}
-      {/* Anime container with navigation arrows */}
       <HorizontalScroller
         items={anime}
         renderCard={renderAnimeCard}
         title="Top 100 Anime"
-        sx={{ mb: 4 }}
+        sx={{ 
+          mb: 4,
+          '& .MuiTypography-h4': {
+            color: 'text.primary',
+            fontSize: '3.5rem',
+            fontWeight: 'bold',
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase',
+            textAlign: 'center',
+            textShadow: 
+              `-1px -1px 0 goldenrod,  
+               1px -1px 0 goldenrod,
+               -1px 1px 0 goldenrod,
+               1px 1px 0 goldenrod,
+               0 0 15px rgba(218, 165, 32, 0.5)`,
+            mb: 3
+          }
+        }}
       />
     </Container>
     <Footer />

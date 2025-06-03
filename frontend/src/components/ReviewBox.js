@@ -53,13 +53,12 @@ const ReviewBox = ({
         my: 4,
         p: 3,
         borderRadius: 2,
-        background: 'linear-gradient(45deg, #0A1929, #1A2B3C)',
-        border: '1px solid rgba(76, 175, 80, 0.3)',
+        bgcolor: 'background.paper',
+        border: '1px solid rgba(218, 165, 32, 0.3)',
         boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-        color: 'white',
       }}
     >
-      <Typography variant="h6" gutterBottom sx={{ color: 'white', mb: 2 }}>
+      <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
         Update your {contentType} status:
       </Typography>
       <FormControl fullWidth sx={{ mb: 2 }}>
@@ -79,7 +78,7 @@ const ReviewBox = ({
       </FormControl>
       {showRating && status !== 'planned' && (
         <>
-          <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
+          <Typography variant="h6" gutterBottom>
             Rate this {contentType}:
           </Typography>
           <Rating
@@ -87,15 +86,7 @@ const ReviewBox = ({
             onChange={(event, newValue) => setRating(newValue)}
             precision={0.5}
             size="large"
-            sx={{ 
-              mb: 3,
-              '& .MuiRating-iconFilled': {
-                color: 'rgb(62, 155, 255)'
-              },
-              '& .MuiRating-iconHover': {
-                color: 'gold'
-              }
-            }}
+            sx={{ mb: 3 }}
           />
         </>
       )}
@@ -106,13 +97,7 @@ const ReviewBox = ({
         onClick={onSubmit}
         disabled={loading}
         fullWidth
-        sx={{
-          mb: 3,
-          background: 'linear-gradient(45deg,rgb(62, 155, 255),rgb(22, 66, 105))',
-          '&:hover': {
-            background: 'linear-gradient(45deg,rgb(255, 255, 255),rgb(23, 58, 127))',
-          },
-        }}
+        sx={{ mb: 3 }}
       >
         {loading ? <CircularProgress size={24} /> : 'Update Rating'}
       </Button>

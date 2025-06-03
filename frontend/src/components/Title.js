@@ -14,38 +14,51 @@ const Title = () => {
         flexDirection: "column",
         alignItems: "flex-center",
         userSelect: "none",
-        textAlign: "center"
+        textAlign: "center",
+        mt: -3 // negative margin to pull it up
       }}
     >
     <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
   <Box
     component="h1"
     sx={{
-      fontSize: { xs: "2.5rem", md: "4rem" },
+      fontSize: { xs: "3.5rem", md: "6rem" },
       fontWeight: 800,
       fontFamily: "'Montserrat', sans-serif",
-      background: "radial-gradient(circle,rgb(11, 57, 127),rgb(51, 192, 239),rgb(22, 98, 175))",
-      backgroundSize: "300% 300%",
+      background: "radial-gradient(at center bottom, rgb(253, 224, 71), rgb(120, 53, 15))",
+      backgroundSize: "200% 200%",
       WebkitBackgroundClip: "text",
       WebkitTextFillColor: "transparent",
       animation: "gradientMove 6s ease infinite",
       lineHeight: 1,
       mb: 0.3,
-      textAlign: "left", // keeps text left-aligned
+      textAlign: "center",
+      width: "100%",
+      letterSpacing: "0.05em",
+      textShadow: "0 0 20px rgba(253, 224, 71, 0.5)",
+      position: "relative",
+      "& span": {
+        background: "inherit",
+        backgroundClip: "text",
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        backgroundSize: "inherit",
+        animation: "inherit",
+        textShadow: "inherit"
+      }
     }}
   >
-    Entertain<span style={{ color: "#4caf50" }}>Me</span>
+    Entertain<span>ME</span>
   </Box>
 
   <Box
     sx={{
-      mt: 0,
-      width: "80px",
-      height: "4px",
+      mt: 2,
+      width: "450px",
+      height: "3px",
       borderRadius: "2px",
-      background: "radial-gradient(circle,rgb(71, 119, 251), #081c15)",
-      boxShadow: "0 0 12px #4caf50",
-      animation: "pulse 2.5s infinite ease-in-out",
+      background: "linear-gradient(90deg, transparent, rgba(253, 224, 71, 0.7), transparent)",
+      animation: "pulse 1.5s infinite ease-in-out",
     }}
   />
 </Box>
@@ -58,10 +71,9 @@ const Title = () => {
             100% { background-position: 0% 50%; }
           }
           @keyframes pulse {
-            0% { transform: scaleX(1); opacity: 1; }
-            50% { transform: scaleX(1.1); opacity: 0.6; }
-            100% { transform: scaleX(1); opacity: 1; }
-          }
+            0% { transform: scaleX(1); opacity: 0.7; }
+            50% { transform: scaleX(1.2); opacity: 1; }
+            100% { transform: scaleX(1); opacity: 0.7; }
         `}
       </style>
     </MotionBox>

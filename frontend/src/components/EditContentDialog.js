@@ -78,8 +78,13 @@ const EditContentDialog = ({ open, item, onClose, onSaveSuccess }) => {
         throw new Error('Failed to update item');
       }
 
-      // Call the success handler passed from parent
-      onSaveSuccess(item.type, item.id, editedStatus, editedRating);
+      // Update the item with new values before passing to success handler
+      const updatedItem = {
+        ...item,
+        user_rating: editedRating,
+        user_status: editedStatus
+      };
+      onSaveSuccess(updatedItem, editedRating);
       onClose(); // Close dialog on success
     } catch (error) {
       console.error('Error updating item:', error);
@@ -119,25 +124,49 @@ const EditContentDialog = ({ open, item, onClose, onSaveSuccess }) => {
       maxWidth="md"
       PaperProps={{
         sx: {
-          bgcolor: '#1e222c', // Darker background
-          color: '#ccc', // Light text
+          bgcolor: '#051426',
+          color: '#FFFFFF',
           borderRadius: 2,
-          minWidth: 400, // Set a minimum width to make the box larger
+          minWidth: 400,
+          border: '1px solid rgba(218, 165, 32, 0.3)',
+          boxShadow: '0 0 20px rgba(0, 0, 0, 0.5)'
         }
       }}
     >
-      <DialogTitle sx={{ color: '#fff' }}>
+      <DialogTitle sx={{ 
+        borderBottom: '1px solid rgba(218, 165, 32, 0.2)',
+        background: 'linear-gradient(to bottom, #FFFFFF 0%, goldenrod 100%)',
+        backgroundClip: 'text',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+      }}>
         Edit {item?.type === 'game' ? 'Game' : 'Anime'}
       </DialogTitle>
-      <DialogContent>
+      <DialogContent sx={{ bgcolor: '#051426' }}>
         <FormControl fullWidth margin="normal" sx={{
-          '.MuiInputLabel-root': { color: '#ccc' },
+          '.MuiInputLabel-root': { 
+            color: 'rgba(255, 255, 255, 0.7)',
+            '&.Mui-focused': {
+              color: 'goldenrod'
+            }
+          },
           '.MuiOutlinedInput-root': {
-            fieldset: { borderColor: '#444' },
-            '&:hover fieldset': { borderColor: '#666' },
-            '&.Mui-focused fieldset': { borderColor: '#888' },
-            '.MuiSelect-select': { color: '#ccc' },
-            '.MuiSvgIcon-root': { color: '#ccc' },
+            bgcolor: '#051426',
+            '& fieldset': { 
+              borderColor: 'rgba(218, 165, 32, 0.5)' 
+            },
+            '&:hover fieldset': { 
+              borderColor: 'goldenrod' 
+            },
+            '&.Mui-focused fieldset': { 
+              borderColor: 'goldenrod' 
+            },
+            '.MuiSelect-select': { 
+              color: '#FFFFFF'
+            },
+            '.MuiSvgIcon-root': { 
+              color: 'rgba(218, 165, 32, 0.7)' 
+            },
           },
         }}>
           <InputLabel>Status</InputLabel>
@@ -146,7 +175,6 @@ const EditContentDialog = ({ open, item, onClose, onSaveSuccess }) => {
             onChange={(e) => {
               const newStatus = e.target.value;
               setEditedStatus(newStatus);
-              // Reset rating to 0 when changing from 'planned' to another status
               if (editedStatus.toLowerCase() === 'planned' && newStatus.toLowerCase() !== 'planned') {
                 setEditedRating(0);
               }
@@ -154,16 +182,47 @@ const EditContentDialog = ({ open, item, onClose, onSaveSuccess }) => {
             label="Status"
           >
             {statusOptions.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
+              <MenuItem 
+                key={option.value} 
+                value={option.value}
+                sx={{
+                  color: '#FFFFFF',
+                  bgcolor: '#051426',
+                  '&:hover': {
+                    bgcolor: 'rgba(218, 165, 32, 0.1)'
+                  },
+                  '&.Mui-selected': {
+                    bgcolor: '#051426',
+                    border: '1px solid rgba(218, 165, 32, 0.3)',
+                    '&:hover': {
+                      bgcolor: 'rgba(218, 165, 32, 0.1)'
+                    }
+                  }
+                }}
+              >
                 {option.label}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
-        {/* Only show rating if not planned status */}
         {editedStatus.toLowerCase() !== 'planned' && (
-           <Box margin="normal" sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-             <Typography component="legend" sx={{ color: '#ccc', mb: 0.5 }}>Rating</Typography>
+           <Box margin="normal" sx={{ 
+             mt: 2, 
+             width: '100%', 
+             display: 'flex', 
+             flexDirection: 'column', 
+             alignItems: 'center',
+             bgcolor: '#051426'
+           }}>
+             <Typography 
+               component="legend" 
+               sx={{ 
+                 color: '#FFFFFF',
+                 mb: 0.5 
+               }}
+             >
+               Rating
+             </Typography>
              <Rating
                name="simple-controlled"
                value={editedRating}
@@ -174,21 +233,53 @@ const EditContentDialog = ({ open, item, onClose, onSaveSuccess }) => {
                sx={{
                   mb: 3,
                   '& .MuiRating-iconFilled': {
-                    color: 'rgb(62, 155, 255)'
+                    color: 'goldenrod'
                   },
                   '& .MuiRating-iconHover': {
-                    color: 'gold'
+                    color: 'goldenrod'
                   },
-                 '& .MuiRating-iconEmpty': { color: 'rgb(181, 181, 198)', strokeWidth: 0.5},
-                 '& .MuiRating-icon': { fontSize: '2rem' }, // Make stars bigger
+                  '& .MuiRating-iconEmpty': { 
+                    color: 'rgba(218, 165, 32, 0.3)'
+                  },
+                  '& .MuiRating-icon': { 
+                    fontSize: '2rem'
+                  },
                }}
              />
            </Box>
         )}
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} sx={{ color: '#ccc' }}>Cancel</Button>
-        <Button onClick={handleSave} variant="contained" color="primary">
+      <DialogActions sx={{
+        borderTop: '1px solid rgba(218, 165, 32, 0.2)',
+        padding: 2,
+        bgcolor: '#051426'
+      }}>
+        <Button 
+          onClick={onClose} 
+          sx={{ 
+            color: 'rgba(255, 255, 255, 0.7)',
+            '&:hover': {
+              color: '#FFFFFF',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)'
+            }
+          }}
+        >
+          Cancel
+        </Button>
+        <Button 
+          onClick={handleSave} 
+          variant="contained"
+          sx={{
+            bgcolor: '#051426',
+            border: '1px solid rgba(218, 165, 32, 0.5)',
+            color: '#FFFFFF',
+            '&:hover': {
+              bgcolor: '#051426',
+              border: '1px solid goldenrod',
+              boxShadow: '0 0 5px rgba(218, 165, 32, 0.3)'
+            }
+          }}
+        >
           Save
         </Button>
       </DialogActions>

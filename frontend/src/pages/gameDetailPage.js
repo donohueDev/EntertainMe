@@ -55,7 +55,6 @@ const GameDetailPage = () => {
     setRating,
     status,
     setStatus,
-    userContentData: userGameData,
     loading: ratingLoading,
     error: ratingError,
     setError: setRatingError,
@@ -105,7 +104,12 @@ const GameDetailPage = () => {
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
-      <Card sx={{ bgcolor: 'background.paper' }}>
+      <Card sx={{ 
+        '&:hover': {
+          transform: 'none',
+          boxShadow: 'none'
+        }
+      }}>
         <CardMedia
           component="img"
           height="400"
@@ -114,18 +118,18 @@ const GameDetailPage = () => {
           sx={{ objectFit: 'cover' }}
         />
         <CardContent>
-          <Typography variant="h4" component="h1" gutterBottom sx={{ color: 'white' }}>
+          <Typography variant="h4" component="h1" gutterBottom>
             {game.name}
           </Typography>
 
           {/* Game Details Section */}
           <Box sx={{ mb: 4 }}>
-            <Typography variant="subtitle1" sx={{ color: '#bdbdbd', mb: 2, fontSize: '1.2rem', fontWeight: 500 }}>
+            <Typography variant="subtitle1" sx={{ color: 'text.secondary', mb: 2, fontSize: '1.2rem', fontWeight: 500 }}>
               Game Details
             </Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <Typography variant="body1" sx={{ color: 'white' }}>
+                <Typography variant="body1">
                   <strong>Release Date:</strong> {game.tba ? 'TBA' : (game.released ? formatDate(game.released) : 'N/A')}
                 </Typography>
               </Grid>
@@ -195,7 +199,6 @@ const GameDetailPage = () => {
           ) : (
             <LoginPromptBox
               contentType="game"
-              actions={["rate", "track", "build your collection"]}
             />
           )}
 

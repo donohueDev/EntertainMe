@@ -28,10 +28,11 @@ import {
   DialogActions,
 } from '@mui/material';
 import Rating from '@mui/material/Rating';
-import DeleteIcon from '@mui/icons-material/Delete';
+import DeleteIcon from '@mui/icons-material/Delete';               
 import EditIcon from '@mui/icons-material/Edit';
 import EditContentDialog from '../components/EditContentDialog';
 import Footer from '../components/Footer';
+import theme, { commonStyles } from '../theme';
 
 const AccountDashboard = () => {
   const [games, setGames] = useState([]);
@@ -45,6 +46,11 @@ const AccountDashboard = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [gameToDelete, setGameToDelete] = useState(null);
   const [animeToDelete, setAnimeToDelete] = useState(null);
+  const [deleteSuccessOpen, setDeleteSuccessOpen] = useState(false);
+  const [deletedItemName, setDeletedItemName] = useState('');
+  const [ratingSuccessOpen, setRatingSuccessOpen] = useState(false);
+  const [ratedItemName, setRatedItemName] = useState('');
+  const [newRatingValue, setNewRatingValue] = useState(0);
 
   // Add state for the new Edit Content Dialog
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -67,7 +73,6 @@ const AccountDashboard = () => {
     userContentData: userGames,
     loading: gamesLoading,
     error: gamesError,
-    invalidateCache: invalidateGamesCache,
   } = useFetchUserContentData({
     isAuthenticated,
     getUserInfo,
@@ -80,7 +85,6 @@ const AccountDashboard = () => {
     userContentData: userAnime,
     loading: animeLoading,
     error: animeError,
-    invalidateCache: invalidateAnimeCache,
   } = useFetchUserContentData({
     isAuthenticated,
     getUserInfo,
@@ -179,7 +183,12 @@ const AccountDashboard = () => {
       setGames(games.filter(g => g.id !== gameToDelete.id));
       setFilteredGames(filteredGames.filter(g => g.id !== gameToDelete.id));
       setDeleteDialogOpen(false);
-      setGameToDelete(null);
+      // Add small delay before showing success dialog
+      setTimeout(() => {
+        setDeletedItemName(gameToDelete.name);
+        setDeleteSuccessOpen(true);
+        setGameToDelete(null);
+      }, 300);
     } catch (error) {
       console.error('Failed to delete game:', error);
       setError('Failed to remove game from your collection. Please try again later.');
@@ -208,7 +217,12 @@ const AccountDashboard = () => {
       setAnime(anime.filter(a => a.id !== animeToDelete.id));
       setFilteredAnime(filteredAnime.filter(a => a.id !== animeToDelete.id));
       setDeleteDialogOpen(false);
-      setAnimeToDelete(null);
+      // Add small delay before showing success dialog
+      setTimeout(() => {
+        setDeletedItemName(animeToDelete.title_english || animeToDelete.title);
+        setDeleteSuccessOpen(true);
+        setAnimeToDelete(null);
+      }, 300);
     } catch (error) {
       console.error('Failed to delete anime:', error);
       setError('Failed to remove anime from your collection. Please try again later.');
@@ -223,42 +237,39 @@ const AccountDashboard = () => {
   };
 
   // New handler for when the edit dialog successfully saves
-  const handleEditSaveSuccess = (type, id, newStatus, newRating) => {
-    if (type === 'game') {
-      setGames(prevGames =>
-        prevGames.map(game =>
-          game.id === id
-            ? { ...game, user_status: newStatus, user_rating: newRating }
-            : game
-        )
+  const handleEditSaveSuccess = (updatedItem, newRating) => {
+    // Close edit dialog first
+    setContentItemToEdit(null);
+
+    // Update the local state immediately
+    if (updatedItem.type === 'game') {
+      const updatedGames = games.map(game =>
+        game.id === updatedItem.id ? { ...game, user_rating: newRating, user_status: updatedItem.user_status } : game
       );
-      setFilteredGames(prevFilteredGames =>
-        prevFilteredGames.map(game =>
-          game.id === id
-            ? { ...game, user_status: newStatus, user_rating: newRating }
-            : game
-        )
+      setGames(updatedGames);
+      setFilteredGames(updatedGames.filter(game =>
+        statusFilter === 'all' ? true : game.user_status?.toLowerCase() === statusFilter.toLowerCase()
+      ));
+    } else {
+      const updatedAnime = anime.map(a =>
+        a.id === updatedItem.id ? { ...a, user_rating: newRating, user_status: updatedItem.user_status } : a
       );
-      // Invalidate the games cache after successful save
-      invalidateGamesCache(id);
-    } else if (type === 'anime') {
-      setAnime(prevAnime =>
-        prevAnime.map(animeItem =>
-          animeItem.id === id
-            ? { ...animeItem, user_status: newStatus, user_rating: newRating }
-            : animeItem
-        )
-      );
-      setFilteredAnime(prevFilteredAnime =>
-        prevFilteredAnime.map(animeItem =>
-          animeItem.id === id
-            ? { ...animeItem, user_status: newStatus, user_rating: newRating }
-            : animeItem
-        )
-      );
-      // Invalidate the anime cache after successful save
-      invalidateAnimeCache(id);
+      setAnime(updatedAnime);
+      setFilteredAnime(updatedAnime.filter(a =>
+        animeStatusFilter === 'all' ? true : a.user_status?.toLowerCase() === animeStatusFilter.toLowerCase()
+      ));
     }
+    
+    // Invalidate the cache for future refreshes
+    invalidateUserDataCache();
+
+    // Add a small delay before showing the success dialog
+    setTimeout(() => {
+      const itemName = updatedItem.type === 'game' ? updatedItem.name : (updatedItem.title_english || updatedItem.title);
+      setRatedItemName(itemName);
+      setNewRatingValue(newRating);
+      setRatingSuccessOpen(true);
+    }, 300);
   };
 
   // If loading, show loading spinner
@@ -299,54 +310,83 @@ const AccountDashboard = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-    <Container sx={{ flex: '1 0 auto' }}>
-      <Box mt={4}>
+    <Container sx={{ flex: '1 0 auto', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ flex: 1 }} mt={4}>
         {/* Header with Welcome and Toggle */}
         <Box mb={3} display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h4">
+          <Typography variant="h4" sx={{
+            background: "radial-gradient(at center bottom, rgb(253, 224, 71), rgb(120, 53, 15))",
+            backgroundClip: "text",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            textShadow: "0 0 15px rgba(253, 224, 71, 0.3)"
+          }}>
             Welcome, {userInfo?.username}!
           </Typography>
-          <ButtonGroup variant="contained" aria-label="content type toggle">
+          <ButtonGroup 
+            variant="contained" 
+            aria-label="content type toggle"
+            sx={{
+              '& .MuiButton-root': {
+                ...theme.components.MuiButton.styleOverrides.root['&.MuiButton-contained'],
+                '&.active': {
+                  borderColor: 'goldenrod !important'
+                }
+              }
+            }}
+          >
             <Button 
               onClick={() => setContentType('games')}
-              variant={contentType === 'games' ? 'contained' : 'outlined'}
+              className={contentType === 'games' ? 'active' : ''}
               sx={{
-                bgcolor: contentType === 'games' ? 'primary.main' : 'transparent',
-                '&:hover': {
-                  bgcolor: contentType === 'games' ? 'primary.dark' : 'rgba(255, 255, 255, 0.08)'
-                }
+                ...theme.components.MuiButton.styleOverrides.root,
+                color: contentType === 'games' ? 'goldenrod' : '#FFFFFF',
+                boxShadow: contentType === 'games' 
+                  ? '0 0 10px rgba(218, 165, 32, 0.3)' 
+                  : 'none'
               }}
             >
               Games
             </Button>
             <Button 
               onClick={() => setContentType('anime')}
-              variant={contentType === 'anime' ? 'contained' : 'outlined'}
+              className={contentType === 'anime' ? 'active' : ''}
               sx={{
-                bgcolor: contentType === 'anime' ? 'primary.main' : 'transparent',
-                '&:hover': {
-                  bgcolor: contentType === 'anime' ? 'primary.dark' : 'rgba(255, 255, 255, 0.08)'
-                }
+                ...theme.components.MuiButton.styleOverrides.root,
+                color: contentType === 'anime' ? 'goldenrod' : '#FFFFFF',
+                boxShadow: contentType === 'anime' 
+                  ? '0 0 10px rgba(218, 165, 32, 0.3)' 
+                  : 'none'
               }}
             >
               Anime
             </Button>
           </ButtonGroup>
         </Box>
-        {/* Games Section */}
+
         {contentType === 'games' && (
           <>
-            <Typography variant="h5" sx={{ mt: 2, mb: 2 }}>
+            <Typography variant="h5" sx={{ 
+              mt: 2, 
+              mb: 2,
+              color: 'white',
+              textShadow: '0 0 10px rgba(218, 165, 32, 0.3)'
+            }}>
               Your Games
             </Typography>
-            {/* Show filter only if there are games */}
             <Box mb={3}>
               <FormControl fullWidth>
-                <InputLabel>Filter by Status</InputLabel>
+                <InputLabel sx={{ 
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  '&.Mui-focused': { color: 'goldenrod' }
+                }}>Filter by Status</InputLabel>
                 <Select
                   value={statusFilter}
                   onChange={handleStatusFilterChange}
                   label="Filter by Status"
+                  sx={{
+                    ...theme.components.MuiSelect.styleOverrides.root
+                  }}
                 >
                   <MenuItem value="all">All Games</MenuItem>
                   <MenuItem value="planned">Planned</MenuItem>
@@ -357,8 +397,6 @@ const AccountDashboard = () => {
               </FormControl>
             </Box>
 
-
-            {/* Display filtered games */}
             {filteredGames.length > 0 ? (
               <Grid container spacing={3}>
                 {filteredGames.map((game) => (
@@ -366,7 +404,6 @@ const AccountDashboard = () => {
                     <Card 
                       sx={{
                         cursor: 'pointer',
-                        transition: 'transform 0.2s',
                         height: 350,
                         width: 240,
                         maxWidth: '100%',
@@ -374,11 +411,10 @@ const AccountDashboard = () => {
                         flexDirection: 'column',
                         position: 'relative',
                         mx: 'auto',
-                        boxShadow: 3,
-                        borderRadius: 3,
-                        bgcolor: '#181c24',
+                        ...commonStyles.goldenBorder,
+                        ...commonStyles.cardHover,
                         '&:hover': {
-                          transform: 'scale(1.02)',
+                          ...commonStyles.cardHover['&:hover'],
                           '& .action-buttons': {
                             opacity: 1
                           }
@@ -386,10 +422,9 @@ const AccountDashboard = () => {
                       }}
                       onClick={() => handleGameClick(game)}
                     >
-                      {/* Title at the very top */}
                       <Box sx={{
                         width: '100%',
-                        bgcolor: '#222',
+                        bgcolor: 'rgba(0, 0, 0, 0.3)',
                         borderTopLeftRadius: 12,
                         borderTopRightRadius: 12,
                         p: 1.2,
@@ -397,16 +432,16 @@ const AccountDashboard = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        borderBottom: '1px solid rgba(218, 165, 32, 0.2)'
                       }}>
                         <Typography variant="h6" component="div" sx={{
-                          color: '#ccc',
+                          color: '#FFFFFF',
                           fontWeight: 600,
                           fontSize: 18,
                           textAlign: 'center',
                           width: '100%',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          whiteSpace: 'normal',
                           display: '-webkit-box',
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: 'vertical',
@@ -414,7 +449,6 @@ const AccountDashboard = () => {
                           {game.name}
                         </Typography>
                       </Box>
-                      {/* Game cover image */}
                       <CardMedia
                         component="img"
                         image={game.background_image || 'https://via.placeholder.com/240x320'}
@@ -427,42 +461,42 @@ const AccountDashboard = () => {
                           background: '#222',
                         }}
                       />
-                      {/* Game details */}
                       <CardContent sx={{
                         flexGrow: 0,
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'center',
                         alignItems: 'center',
-                        bgcolor: '#222',
+                        bgcolor: 'rgba(0, 0, 0, 0.3)',
                         borderBottomLeftRadius: 12,
                         borderBottomRightRadius: 12,
                         p: 1.5,
                         minHeight: 80,
                         boxSizing: 'border-box',
                         width: '100%',
-                        flexShrink: 0
+                        flexShrink: 0,
+                        borderTop: '1px solid rgba(218, 165, 32, 0.2)'
                       }}>
-                        <Typography variant="body1" color="text.secondary" sx={{
-                          color: '#bdbdbd',
-                          mt: 0, mb: 0.5,
+                        <Typography variant="body1" sx={{
+                          color: '#FFFFFF',
+                          mt: 0, 
+                          mb: 0.5,
                           textAlign: 'center',
                           width: '100%'
                         }}>
-                          Status: {game ? (game.user_status || 'Not played') : (anime.user_status || 'Not set')}
+                          Status: {game.user_status || 'Not played'}
                         </Typography>
-                        {(game ? game.user_status?.toLowerCase() !== 'planned' : anime.user_status?.toLowerCase() !== 'planned') && (
+                        {game.user_status?.toLowerCase() !== 'planned' && (
                           <Box display="flex" alignItems="center" sx={{ mt: 0 }}>
-                            <Typography component="legend" sx={{ color: '#bdbdbd', mr: 1 }}>Rating:</Typography>
+                            <Typography component="legend" sx={{ 
+                              color: '#FFFFFF', 
+                              mr: 1 
+                            }}>Rating:</Typography>
                             <Rating 
-                              value={game ? (game.user_rating || 0) : Number(anime.user_rating)} 
+                              value={game.user_rating || 0}
                               readOnly 
                               precision={0.5}
-                              sx={{
-                                '& .MuiRating-iconFilled': {
-                                  color: 'rgb(62, 155, 255)'
-                                }
-                              }}
+                              sx={theme.components.MuiRating.styleOverrides}
                             />
                           </Box>
                         )}
@@ -477,11 +511,14 @@ const AccountDashboard = () => {
                           gap: 1,
                           opacity: 0,
                           transition: 'opacity 0.2s',
-                          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                          backgroundColor: 'rgba(5, 20, 38, 0.9)',
                           borderRadius: 1,
                           padding: 0.5,
+                          border: '1px solid rgba(218, 165, 32, 0.3)',
                           '& .MuiIconButton-root': {
-                            color: 'white',
+                            '& .MuiSvgIcon-root': {
+                              color: '#FFFFFF'
+                            },
                             '&:hover': {
                               backgroundColor: 'rgba(255, 255, 255, 0.1)'
                             }
@@ -491,14 +528,12 @@ const AccountDashboard = () => {
                         <IconButton 
                           size="small" 
                           onClick={(e) => handleUpdateClick(game, e)}
-                          color="primary"
                         >
                           <EditIcon />
                         </IconButton>
                         <IconButton 
                           size="small" 
                           onClick={(e) => handleDeleteClick(game, e)}
-                          color="error"
                         >
                           <DeleteIcon />
                         </IconButton>
@@ -508,21 +543,35 @@ const AccountDashboard = () => {
                 ))}
               </Grid>
             ) : (
-               <Box textAlign="center" mt={4}>
-                 <Typography variant="body1" color="text.secondary" paragraph>
-                    {`You haven't added any ${contentType} to your ${contentType === 'games' ? statusFilter : animeStatusFilter} collection yet`}
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary" paragraph>
-                    Browse our collection and start adding to your {contentType}! 
-                  </Typography>
-                   <Button 
-                   variant="contained" 
-                   color="primary" 
-                   onClick={() => navigate('/')}
-                   sx={{ mt: 2 }}
-                 >
-                   Browse Content!
-                 </Button>
+              <Box textAlign="center" mt={4}>
+                <Typography variant="body1" sx={{ 
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  mb: 2 
+                }} paragraph>
+                  {`You haven't added any ${contentType} to your ${statusFilter} collection yet`}
+                </Typography>
+                <Typography variant="body1" sx={{ 
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  mb: 3 
+                }} paragraph>
+                  Browse our collection and start adding to your {contentType}!
+                </Typography>
+                <Button 
+                  variant="contained" 
+                  onClick={() => navigate('/')}
+                  sx={{
+                    bgcolor: '#051426',
+                    border: '1px solid rgba(218, 165, 32, 0.5)',
+                    color: 'white',
+                    '&:hover': {
+                      bgcolor: '#051426',
+                      border: '1px solid goldenrod',
+                      boxShadow: '0 0 5px rgba(218, 165, 32, 0.3)'
+                    }
+                  }}
+                >
+                  Browse Content!
+                </Button>
               </Box>
             )}
           </>
@@ -530,17 +579,39 @@ const AccountDashboard = () => {
         {/* Anime Section */}
         {contentType === 'anime' && (
           <>
-            <Typography variant="h5" sx={{ mt: 2, mb: 2 }}>
+            <Typography variant="h5" sx={{ 
+              mt: 2, 
+              mb: 2,
+              color: 'white',
+              textShadow: '0 0 10px rgba(218, 165, 32, 0.3)'
+            }}>
               Your Anime
             </Typography>
-            {/* Show filter only if there is anime */}
             <Box mb={3}>
               <FormControl fullWidth>
-                <InputLabel>Filter by Status</InputLabel>
+                <InputLabel sx={{ 
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  '&.Mui-focused': { color: 'goldenrod' }
+                }}>Filter by Status</InputLabel>
                 <Select
                   value={animeStatusFilter}
                   onChange={handleAnimeStatusFilterChange}
                   label="Filter by Status"
+                  sx={{
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(218, 165, 32, 0.5)'
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'goldenrod'
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'goldenrod'
+                    },
+                    '& .MuiSelect-icon': {
+                      color: 'goldenrod'
+                    },
+                    color: 'white'
+                  }}
                 >
                   <MenuItem value="all">All Anime</MenuItem>
                   <MenuItem value="planned">Planned</MenuItem>
@@ -552,7 +623,6 @@ const AccountDashboard = () => {
                 </Select>
               </FormControl>
             </Box>
-            {/* Display filtered anime */}
             {filteredAnime.length > 0 ? (
               <Grid container spacing={3}>
                 {filteredAnime.map((anime) => (
@@ -560,7 +630,6 @@ const AccountDashboard = () => {
                      <Card 
                       sx={{
                         cursor: 'pointer',
-                        transition: 'transform 0.2s',
                         height: 350,
                         width: 240,
                         maxWidth: '100%',
@@ -568,11 +637,10 @@ const AccountDashboard = () => {
                         flexDirection: 'column',
                         position: 'relative',
                         mx: 'auto',
-                        boxShadow: 3,
-                        borderRadius: 3,
-                        bgcolor: '#181c24',
+                        ...commonStyles.goldenBorder,
+                        ...commonStyles.cardHover,
                         '&:hover': {
-                          transform: 'scale(1.02)',
+                          ...commonStyles.cardHover['&:hover'],
                           '& .action-buttons': {
                             opacity: 1
                           }
@@ -583,7 +651,7 @@ const AccountDashboard = () => {
                        {/* Title at the very top */}
                     <Box sx={{
                       width: '100%',
-                      bgcolor: '#222',
+                      bgcolor: 'rgba(0, 0, 0, 0.3)',
                       borderTopLeftRadius: 12,
                       borderTopRightRadius: 12,
                       p: 1.2,
@@ -591,9 +659,10 @@ const AccountDashboard = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      borderBottom: '1px solid rgba(218, 165, 32, 0.2)'
                     }}>
                       <Typography variant="h6" component="div" sx={{
-                        color: '#ccc',
+                        color: '#FFFFFF',
                         fontWeight: 600,
                         fontSize: 18,
                         textAlign: 'center',
@@ -628,18 +697,20 @@ const AccountDashboard = () => {
                       flexDirection: 'column',
                       justifyContent: 'center',
                       alignItems: 'center',
-                      bgcolor: '#222',
+                      bgcolor: 'rgba(0, 0, 0, 0.3)',
                       borderBottomLeftRadius: 12,
                       borderBottomRightRadius: 12,
                       p: 1.5,
                       minHeight: 80,
                       boxSizing: 'border-box',
                       width: '100%',
-                      flexShrink: 0
+                      flexShrink: 0,
+                      borderTop: '1px solid rgba(218, 165, 32, 0.2)'
                     }}>
-                      <Typography variant="body1" color="text.secondary" sx={{
-                        color: '#bdbdbd',
-                        mt: 0, mb: 0.5,
+                      <Typography variant="body1" sx={{
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        mt: 0, 
+                        mb: 0.5,
                         textAlign: 'center',
                         width: '100%'
                       }}>
@@ -647,14 +718,17 @@ const AccountDashboard = () => {
                       </Typography>
                       {anime.user_status?.toLowerCase() !== 'planned' && (
                         <Box display="flex" alignItems="center" sx={{ mt: 0 }}>
-                          <Typography component="legend" sx={{ color: '#bdbdbd', mr: 1 }}>Rating:</Typography>
+                          <Typography component="legend" sx={{ 
+                            color: 'rgba(255, 255, 255, 0.9)', 
+                            mr: 1 
+                          }}>Rating:</Typography>
                           <Rating 
                             value={Number(anime.user_rating)}
                             readOnly 
                             precision={0.5}
                             sx={{
                               '& .MuiRating-iconFilled': {
-                                color: 'rgb(62, 155, 255)'
+                                color: 'goldenrod'
                               }
                             }}
                           />
@@ -671,31 +745,31 @@ const AccountDashboard = () => {
                         gap: 1,
                         opacity: 0,
                         transition: 'opacity 0.2s',
-                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        backgroundColor: 'rgba(5, 20, 38, 0.95)',
                         borderRadius: 1,
                         padding: 0.5,
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
                         '& .MuiIconButton-root': {
-                          color: 'white',
+                          '& .MuiSvgIcon-root': {
+                            color: '#FFFFFF'
+                          },
                           '&:hover': {
                             backgroundColor: 'rgba(255, 255, 255, 0.1)'
                           }
                         }
                       }}
-                    >
-                      <IconButton 
-                        size="small" 
-                        onClick={(e) => handleAnimeUpdate(anime, e)}
-                        color="primary"
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        onClick={(e) => handleAnimeDelete(anime, e)}
-                        color="error"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+                    >                        <IconButton 
+                          size="small" 
+                          onClick={(e) => handleAnimeUpdate(anime, e)}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton 
+                          size="small" 
+                          onClick={(e) => handleAnimeDelete(anime, e)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
                     </Box>
                       </Card>
                     </Grid>
@@ -703,17 +777,31 @@ const AccountDashboard = () => {
                 </Grid>
               ) : (
                  <Box textAlign="center" mt={4}>
-                   <Typography variant="body1" color="text.secondary" paragraph>
+                   <Typography variant="body1" sx={{ 
+                     color: 'rgba(255, 255, 255, 0.7)',
+                     mb: 2 
+                   }} paragraph>
                       {`You haven't added any ${contentType} to your ${contentType === 'games' ? statusFilter : animeStatusFilter} collection yet`}
                     </Typography>
-                    <Typography variant="body1" color="text.secondary" paragraph>
+                    <Typography variant="body1" sx={{ 
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      mb: 3 
+                    }} paragraph>
                       Browse our collection and start adding to your {contentType}! 
                     </Typography>
                      <Button 
                      variant="contained" 
-                     color="primary" 
                      onClick={() => navigate('/')}
-                     sx={{ mt: 2 }}
+                     sx={{
+                       bgcolor: '#051426',
+                       border: '1px solid rgba(218, 165, 32, 0.5)',
+                       color: 'white',
+                       '&:hover': {
+                         bgcolor: '#051426',
+                         border: '1px solid goldenrod',
+                         boxShadow: '0 0 5px rgba(218, 165, 32, 0.3)'
+                       }
+                     }}
                    >
                      Browse Content!
                    </Button>
@@ -725,21 +813,55 @@ const AccountDashboard = () => {
           <Dialog
             open={deleteDialogOpen}
             onClose={() => setDeleteDialogOpen(false)}
+            maxWidth="md"
+            PaperProps={{
+              sx: {
+                ...theme.components.MuiDialog.styleOverrides.paper,
+                minWidth: 400
+              }
+            }}
           >
-            <DialogTitle>Remove {contentType === 'games' ? 'Game' : 'Anime'}</DialogTitle>
-            <DialogContent>
-              <Typography>
+            <DialogTitle sx={theme.components.MuiDialogTitle.styleOverrides.root}>
+              Remove {contentType === 'games' ? 'Game' : 'Anime'}
+            </DialogTitle>
+            <DialogContent sx={{ bgcolor: '#051426', pt: 2 }}>
+              <Typography sx={{ color: '#FFFFFF', mt: 2.5 }}>
                 Are you sure you want to remove {contentType === 'games' 
                   ? gameToDelete?.name 
                   : (animeToDelete?.title_english || animeToDelete?.title)
                 } from your collection?
               </Typography>
             </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <DialogActions sx={{
+              borderTop: '1px solid rgba(218, 165, 32, 0.2)',
+              padding: 2,
+              bgcolor: '#051426'
+            }}>
               <Button 
-                onClick={contentType === 'games' ? handleDeleteConfirm : handleAnimeDeleteConfirm} 
-                color="error"
+                onClick={() => setDeleteDialogOpen(false)}
+                sx={{ 
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  '&:hover': {
+                    color: '#FFFFFF',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={contentType === 'games' ? handleDeleteConfirm : handleAnimeDeleteConfirm}
+                variant="contained"
+                sx={{
+                  bgcolor: '#051426',
+                  border: '1px solid rgba(255, 59, 59, 0.5)',
+                  color: 'rgb(255, 59, 59)',
+                  '&:hover': {
+                    bgcolor: '#051426',
+                    border: '1px solid rgb(255, 59, 59)',
+                    boxShadow: '0 0 5px rgba(255, 59, 59, 0.3)'
+                  }
+                }}
               >
                 Delete
               </Button>
@@ -754,11 +876,119 @@ const AccountDashboard = () => {
             onSaveSuccess={handleEditSaveSuccess}
           />
 
-          <Box mt={4} display="flex" justifyContent="center" mb={4}>
-            <Button variant="contained" color="primary" onClick={handleLogout}>
-              Logout
-            </Button>
-          </Box>
+          {/* Success Dialog */}
+          <Dialog
+            open={deleteSuccessOpen}
+            onClose={() => setDeleteSuccessOpen(false)}
+            maxWidth="md"
+            PaperProps={{
+              sx: {
+                ...theme.components.MuiDialog.styleOverrides.paper,
+                minWidth: 400
+              }
+            }}
+          >
+            <DialogTitle sx={theme.components.MuiDialogTitle.styleOverrides.root}>
+              Successfully Removed
+            </DialogTitle>
+            <DialogContent sx={{ bgcolor: '#051426', pt: 2 }}>
+              <Typography sx={{ color: '#FFFFFF', mt: 2.5 }}>
+                {deletedItemName} has been removed from your collection.
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{
+              borderTop: '1px solid rgba(218, 165, 32, 0.2)',
+              padding: 2,
+              bgcolor: '#051426'
+            }}>
+              <Button 
+                onClick={() => setDeleteSuccessOpen(false)}
+                variant="contained"
+                sx={theme.components.MuiButton.styleOverrides.root}
+              >
+                OK
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Rating Success Dialog */}
+          <Dialog
+            open={ratingSuccessOpen}
+            onClose={() => setRatingSuccessOpen(false)}
+            PaperProps={{
+              sx: {
+                bgcolor: 'rgba(5, 20, 38, 0.95)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(218, 165, 32, 0.2)',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+                color: theme.palette.text.primary
+              }
+            }}
+          >
+            <DialogTitle sx={{ textAlign: 'center' }}>Rating Updated</DialogTitle>
+            <DialogContent>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 2 }}>
+                <Typography>{ratedItemName} has been rated</Typography>
+                <Rating 
+                  value={Number(newRatingValue)}
+                  readOnly 
+                  precision={0.5}
+                  size="large" 
+                  sx={{
+                    '& .MuiRating-iconFilled': {
+                      color: 'goldenrod'
+                    }
+                  }} 
+                />
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => setRatingSuccessOpen(false)}
+                variant="contained"
+                sx={{
+                  bgcolor: '#051426',
+                  border: '1px solid rgba(218, 165, 32, 0.5)',
+                  color: 'white',
+                  '&:hover': {
+                    bgcolor: '#051426',
+                    border: '1px solid goldenrod',
+                    boxShadow: '0 0 5px rgba(218, 165, 32, 0.3)'
+                  }
+                }}
+              >
+                Close
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </Box>
+        
+        
+        {/* Logout Button */}
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: 'center',
+            mt: 'auto', // This pushes the button to the bottom of the container
+            py: 4      // Padding top and bottom
+          }}
+        >
+          <Button 
+            variant="contained"
+            onClick={handleLogout}
+            sx={{
+              bgcolor: '#051426',
+              border: '1px solid rgba(218, 165, 32, 0.5)',
+              color: 'white',
+              '&:hover': {
+                bgcolor: '#051426',
+                border: '1px solid goldenrod',
+                boxShadow: '0 0 5px rgba(218, 165, 32, 0.3)'
+              }
+            }}
+          >
+            Logout
+          </Button>
         </Box>
       </Container>
       <Footer />

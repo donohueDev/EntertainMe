@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline, AppBar, Toolbar, IconButton, Container, Box, CircularProgress, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import SearchIcon from '@mui/icons-material/Search';
@@ -9,6 +9,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { UserProvider, useUser } from './context/userContext';
+import theme from './theme';
 
 // Import pages
 import HomePage from './pages/HomePage';
@@ -19,29 +20,6 @@ import Register from './pages/RegisterPage';
 import AccountDashboard from './pages/AccountDashboard';
 import AnimeDetailPage from './pages/animeDetailPage';
 import ProfilePage from './pages/ProfilePage';
-
-// Create dark theme
-const darkTheme = createTheme({
-  palette: {
-    mode: 'dark',
-    primary: {
-      main: '#ffffff',
-    },
-    background: {
-      default: '#0A1929',
-      paper: '#1A1A1A',
-    },
-  },
-  components: {
-    MuiCssBaseline: {
-      styleOverrides: {
-        body: {
-          backgroundColor: '#0A1929',
-        },
-      },
-    },
-  },
-});
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -101,22 +79,79 @@ const Navigation = () => {
   };
 
   return (
-    <AppBar position="fixed" sx={{ top: 0, bottom: 'auto', zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+    <AppBar position="fixed" sx={{ 
+        top: 0, 
+        bottom: 'auto', 
+        zIndex: (theme) => theme.zIndex.drawer + 1,
+        bgcolor: 'rgba(5, 20, 38, 0.95)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(218, 165, 32, 0.2)',
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
+      }}>
       <Toolbar sx={{ justifyContent: 'space-around' }}>
-        <IconButton component={Link} to="/" color="inherit" sx={{ gap: 1 }}>
+        <IconButton 
+          component={Link} 
+          to="/" 
+          sx={{ 
+            gap: 1,
+            color: '#FFFFFF',
+            '& .MuiSvgIcon-root': {
+              background: 'radial-gradient(at center bottom, rgb(253, 224, 71), rgb(120, 53, 15))',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            },
+            textShadow: '0 0 15px rgba(253, 224, 71, 0.3)',
+            '&:hover': {
+              transform: 'scale(1.05)',
+              transition: 'transform 0.2s ease-in-out'
+            }
+          }}
+        >
           <HomeIcon />
           Home
         </IconButton>
-        <IconButton component={Link} to="/search" color="inherit" sx={{ gap: 1 }}>
+        <IconButton 
+          component={Link} 
+          to="/search" 
+          sx={{ 
+            gap: 1,
+            color: '#FFFFFF',
+            '& .MuiSvgIcon-root': {
+              background: 'radial-gradient(at center bottom, rgb(253, 224, 71), rgb(120, 53, 15))',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            },
+            textShadow: '0 0 15px rgba(253, 224, 71, 0.3)',
+            '&:hover': {
+              transform: 'scale(1.05)',
+              transition: 'transform 0.2s ease-in-out'
+            }
+          }}
+        >
           <SearchIcon />
           Search
         </IconButton>
         <IconButton
           onClick={handleAccountClick}
-          color="inherit"
           aria-controls="account-menu"
           aria-haspopup="true"
-          sx={{ gap: 1 }}
+          sx={{ 
+            gap: 1,
+            color: '#FFFFFF',
+            '& .MuiSvgIcon-root': {
+              background: 'radial-gradient(at center bottom, rgb(253, 224, 71), rgb(120, 53, 15))',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            },
+            textShadow: '0 0 15px rgba(253, 224, 71, 0.3)',
+            '&:hover': {
+              transform: 'scale(1.05)',
+              transition: 'transform 0.2s ease-in-out'
+            }
+          }}
         >
           <PersonIcon />
           Account
@@ -134,16 +169,46 @@ const Navigation = () => {
             vertical: 'top',
             horizontal: 'right',
           }}
-          paper={{
+          PaperProps={{
             elevation: 0,
             sx: {
               overflow: 'visible',
-              filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+              filter: 'drop-shadow(0px 4px 12px rgba(0, 0, 0, 0.5))',
               mt: 1.5,
-              bgcolor: 'background.paper',
+              bgcolor: 'rgba(5, 20, 38, 0.95)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(218, 165, 32, 0.2)',
+              borderRadius: 2,
+              '&:before': {
+                content: '""',
+                display: 'block',
+                position: 'absolute',
+                top: 0,
+                right: 14,
+                width: 10,
+                height: 10,
+                bgcolor: 'rgba(5, 20, 38, 0.95)',
+                transform: 'translateY(-50%) rotate(45deg)',
+                zIndex: 0,
+                border: '1px solid rgba(218, 165, 32, 0.2)',
+                borderBottom: 'none',
+                borderRight: 'none'
+              },
               '& .MuiMenuItem-root': {
                 px: 2,
-                py: 1,
+                py: 1.5,
+                color: '#FFFFFF',
+                transition: 'all 0.2s ease-in-out',
+                '& .MuiListItemIcon-root': { 
+                  color: 'goldenrod',
+                  transition: 'color 0.2s ease-in-out'
+                },
+                '&:hover': {
+                  bgcolor: 'rgba(218, 165, 32, 0.1)',
+                  '& .MuiListItemIcon-root': { 
+                    color: '#FFFFFF'
+                  }
+                },
               },
             },
           }}
@@ -218,29 +283,29 @@ const AppContent = () => {
   }
 
   return (
-    <Router>
-      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <Navigation />
-        <Box component="main" sx={{ flexGrow: 1, pt: 8, pb: 7 }}>
-          <Container>
-            <AppRoutes />
-          </Container>
-        </Box>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <Navigation />
+      <Box component="main" sx={{ flexGrow: 1, pt: 8, pb: 7 }}>
+        <Container>
+          <AppRoutes />
+        </Container>
       </Box>
-    </Router>
+    </Box>
   );
 };
 
 // Main App component
-const App = () => {
+function App() {
   return (
-    <ThemeProvider theme={darkTheme}>
+    <ThemeProvider theme={theme}>
       <CssBaseline />
       <UserProvider>
-        <AppContent />
+        <Router>
+          <AppContent />
+        </Router>
       </UserProvider>
     </ThemeProvider>
   );
-};
+}
 
 export default App;
