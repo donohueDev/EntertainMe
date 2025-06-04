@@ -532,6 +532,7 @@ export const animeController = {
             if (filteredTopAnime.length === 0) {
                 return res.status(404).json({ message: 'No top anime found.' });
             }
+            console.log('Found top anime:', filteredTopAnime.length);
             return res.status(200).json(filteredTopAnime);
         } catch (error) {
             console.error('Error fetching top anime:', error);

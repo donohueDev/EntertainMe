@@ -16,7 +16,8 @@
     "prisma:generate": "dotenv -e ../.env -- prisma generate",
     "prisma:migrate": "dotenv -e ../.env -- prisma migrate dev",
     "prisma:validate": "dotenv -e ../.env -- prisma validate",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:cron": "ts-node tests/cron_test.ts"
   },
   "keywords": [],
   "author": "",
