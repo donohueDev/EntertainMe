@@ -22,6 +22,10 @@ import HorizontalScroller from '../components/HorizontalScroller';
 import Footer from '../components/Footer';
 import { commonStyles } from '../theme';
 
+// Environment check
+const NODE_ENV = process.env.NODE_ENV ?? 'development';
+const isDev = NODE_ENV === 'development';
+
 const HomePage = () => {
   const [games, setGames] = useState([]);
   const [anime, setAnime] = useState([]);
@@ -42,7 +46,6 @@ const HomePage = () => {
   }, [isAuthenticated, getUserInfo]);
 
   useEffect(() => {
-    // Cache handling functions
     const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
     const getCachedData = (key) => {
@@ -71,13 +74,12 @@ const HomePage = () => {
       const cachedGames = getCachedData('topGames');
       
       if (cachedGames) {
-        // console.log('Using cached games data');
         setGames(cachedGames);
         setLoading(false);
         return;
       }
 
-      console.log('Fetching top games...');
+      isDev && console.log('[Games] Fetching top games...');
       try {
         const response = await axios.get(`${API_BASE_URL}/api/games/top`, {
           headers: {
@@ -85,16 +87,21 @@ const HomePage = () => {
             'Content-Type': 'application/json'
           }
         });
-        console.log('Response:', response.data);
+        isDev && console.log('[Games] Received:', { count: response.data?.length });
         if (response.data && Array.isArray(response.data)) {
           setGames(response.data);
           setCachedData('topGames', response.data);
         } else {
-          console.log('No games found in response');
+          console.warn('[Games] No games found in response');
           setError('No games found. Please try again later.');
         }
       } catch (error) {
-        console.error("Failed to fetch games:", error.message);
+        console.error('[Games] Failed to fetch:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          timestamp: new Date().toISOString()
+        });
         setError('Failed to load games. Please try again later.');
       } finally {
         setLoading(false);
@@ -105,13 +112,12 @@ const HomePage = () => {
       const cachedAnime = getCachedData('topAnime');
       
       if (cachedAnime) {
-        // console.log('Using cached anime data');
         setAnime(cachedAnime);
         setLoading(false);
         return;
       }
 
-      console.log('Fetching top anime...');
+      isDev && console.log('[Anime] Fetching top anime...');
       try {
         const response = await axios.get(`${API_BASE_URL}/api/anime/top`, {
           headers: {
@@ -119,13 +125,18 @@ const HomePage = () => {
             'Content-Type': 'application/json'
           }
         });
-        console.log('Anime response:', response.data);
+        isDev && console.log('[Anime] Received:', { count: response.data?.length });
         if (response.data && Array.isArray(response.data)) {
           setAnime(response.data);
           setCachedData('topAnime', response.data);
         }
       } catch (error) {
-        console.error("Failed to fetch anime:", error.message);
+        console.error('[Anime] Failed to fetch:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          timestamp: new Date().toISOString()
+        });
         setError('Failed to load anime. Please try again later.');
       } finally {
         setLoading(false);
@@ -138,7 +149,7 @@ const HomePage = () => {
 
   // Modify handleLoadGames and handleLoadAnime to clear cache when manually updating
   const handleLoadGames = async () => {
-    console.log('Updating top games...');
+    isDev && console.log('[Games] Initiating manual update...');
     localStorage.removeItem('topGames');
     try {
       const response = await axios.post(`${API_BASE_URL}/api/games/update-top-games`, {}, {
@@ -147,20 +158,21 @@ const HomePage = () => {
           'Content-Type': 'application/json'
         }
       });
-      console.log('Update top games response:', response.data);
+      isDev && console.log('[Games] Manual update completed:', { status: response.status });
       window.location.reload();
     } catch (error) {
-      console.error('Failed to update top games:', error.message);
-      if (error.response) {
-        console.error("Error response:", error.response.data);
-        console.error("Error status:", error.response.status);
-      }
+      console.error('[Games] Manual update failed:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        timestamp: new Date().toISOString()
+      });
       setError('Failed to update top games. Please try again later.');
     }
   };
 
   const handleLoadAnime = async () => {
-    console.log('Updating top anime...');
+    isDev && console.log('[Anime] Initiating manual update...');
     localStorage.removeItem('topAnime');
     try {
       const response = await axios.post(`${API_BASE_URL}/api/anime/update-top-anime`, {}, {
@@ -169,14 +181,15 @@ const HomePage = () => {
           'Content-Type': 'application/json'
         }
       });
-      console.log('Update top anime response:', response.data);
+      isDev && console.log('[Anime] Manual update completed:', { status: response.status });
       window.location.reload();
     } catch (error) {
-      console.error('Failed to update top anime:', error.message);
-      if (error.response) {
-        console.error("Error response:", error.response.data);
-        console.error("Error status:", error.response.status);
-      }
+      console.error('[Anime] Manual update failed:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        timestamp: new Date().toISOString()
+      });
       setError('Failed to update top anime. Please try again later.');
     }
   };

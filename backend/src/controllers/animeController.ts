@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import axios from 'axios';
 
 const prisma = new PrismaClient();
+const NODE_ENV = process.env.NODE_ENV ?? 'development';
 
 export interface AnimeProducer {
     id: number;
@@ -90,13 +91,12 @@ const isDuplicateAnime = async (anime: Anime): Promise<boolean> => {
                 }
             }
         });
-        if (existingAnime) {
-            console.log(`Duplicate anime found: ${anime.title} (mal_id: ${anime.mal_id}, api_source: ${anime.api_source}, api_source_id: ${anime.api_source_id})`);
-            return true;
+        if (existingAnime && NODE_ENV !== 'production') {
+            console.log(`Skipping duplicate: ${anime.title}`);
         }
-        return false;
+        return !!existingAnime;
     } catch (error) {
-        console.error('Error checking for duplicate anime:', error);
+        console.error('Database error checking for duplicate:', error);
         return false;
     }
 };
@@ -194,7 +194,10 @@ const insertAnimeIntoDatabase = async (anime: Anime): Promise<void> => {
             }
         });
     } catch (error) {
-        console.error('Error inserting anime into database:', error);
+        console.error('Database error inserting anime:', {
+            title: anime.title,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 };
 
@@ -215,7 +218,9 @@ const processAnimeData = async (anime: any): Promise<boolean> => {
         anime.api_source_id = animeId?.toString() || '';
 
         if (!animeId || !animeSlug || !animeTitle) {
-            console.error('Skipping invalid anime data:', anime);
+            if (NODE_ENV !== 'production') {
+                console.warn('Invalid anime data:', { animeId, animeSlug, animeTitle });
+            }
             return false;
         }
         // Filter out unwanted types
@@ -298,10 +303,15 @@ const processAnimeData = async (anime: any): Promise<boolean> => {
         };
 
         await insertAnimeIntoDatabase(animeData);
-        console.log(`Processed and inserted anime: ${animeData.title} (mal_id: ${animeData.mal_id})`);
+        if (NODE_ENV !== 'production') {
+            console.log(`Processed: ${animeData.title}`);
+        }
         return true;
     } catch (error) {
-        console.error('Error processing anime data:', error);
+        console.error('Error processing anime:', {
+            title: anime?.title || 'unknown',
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
         return false;
     }
 };
@@ -312,14 +322,16 @@ export const animeController = {
     loadAnimeFromApi: async (_req: Request, res: Response) => {
         try {
             let page = 1;
-            const pageSize = 25; // Jikan API recommended page size
+            const pageSize = 25;
             let totalAnimeInserted = 0;
             let duplicatesSkipped = 0;
             const targetAnime = 500;
             const maxRetries = 3;
             const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-            console.log(`Starting to fetch anime from Jikan API... Target: ${targetAnime} anime`);
+            if (NODE_ENV !== 'production') {
+                console.log(`Starting anime fetch. Target: ${targetAnime}`);
+            }
 
             while (totalAnimeInserted < targetAnime) {
                 let retryCount = 0;
@@ -337,14 +349,15 @@ export const animeController = {
                         });
 
                         if (!response.data.data || response.data.data.length === 0) {
-                            console.log('No more anime data available');
+                            if (NODE_ENV !== 'production') {
+                                console.log('No more anime data available');
+                            }
                             break;
                         }
 
                         for (const anime of response.data.data) {
                             if (totalAnimeInserted >= targetAnime) break;
                             
-                            // Add required fields before checking duplicates
                             const animeWithSource = {
                                 ...anime,
                                 api_source: 'jikan',
@@ -359,17 +372,20 @@ export const animeController = {
                             const success = await processAnimeData(anime);
                             if (success) {
                                 totalAnimeInserted++;
-                                console.log(`Processed ${totalAnimeInserted}/${targetAnime} anime`);
+                                if (totalAnimeInserted % 50 === 0 && NODE_ENV !== 'production') {
+                                    console.log(`Progress: ${totalAnimeInserted}/${targetAnime}`);
+                                }
                             }
                         }
 
                         success = true;
                     } catch (error) {
                         retryCount++;
-                        console.error(`Attempt ${retryCount} failed:`, error);
+                        console.error(`API call failed (attempt ${retryCount}/${maxRetries}):`, 
+                            error instanceof Error ? error.message : 'Unknown error'
+                        );
                         if (retryCount < maxRetries) {
-                            console.log(`Retrying in 5 seconds...`);
-                            await delay(5000); // Longer delay for Jikan API rate limits
+                            await delay(5000);
                         }
                     }
                 }
@@ -379,12 +395,10 @@ export const animeController = {
                     break;
                 }
 
-                if (totalAnimeInserted >= targetAnime) {
-                    break;
-                }
+                if (totalAnimeInserted >= targetAnime) break;
 
                 page++;
-                await delay(1000); // Respect Jikan API rate limits
+                await delay(1000);
             }
 
             return res.status(200).json({ 
@@ -393,7 +407,9 @@ export const animeController = {
                 duplicatesSkipped
             });
         } catch (error) {
-            console.error('Error loading anime from API:', error);
+            console.error('Error in anime load process:', 
+                error instanceof Error ? error.message : 'Unknown error'
+            );
             return res.status(500).json({ message: 'Internal server error.' });
         }
     },
@@ -476,34 +492,38 @@ export const animeController = {
     },
     // Search anime by query
     searchAnime: async (req: Request, res: Response) => {
-    try {
-      const { query } = req.query;
-      
-      if (!query) {
-        return res.status(400).json({ error: 'Search query is required' });
-      }
+        try {
+            const { query } = req.query;
+            
+            if (!query) {
+                return res.status(400).json({ error: 'Search query is required' });
+            }
 
-      // Ensure query is a string
-      const searchQuery = Array.isArray(query) ? query[0] : query;
-      if (typeof searchQuery !== 'string') {
-        return res.status(400).json({ error: 'Search query must be a string' });
-      }
-      const animeList = await prisma.anime.findMany({
-        where: {
-          OR: [
-            { title: { contains: searchQuery, mode: 'insensitive' } },
-            { title_english: { contains: searchQuery, mode: 'insensitive' } },
-            { title_japanese: { contains: searchQuery, mode: 'insensitive' } }
-          ],
-        },
-        orderBy: {
-                rating: 'desc'
-        }
+            const searchQuery = Array.isArray(query) ? query[0] : query;
+            if (typeof searchQuery !== 'string') {
+                return res.status(400).json({ error: 'Search query must be a string' });
+            }
+
+            const animeList = await prisma.anime.findMany({
+                where: {
+                    OR: [
+                        { title: { contains: searchQuery, mode: 'insensitive' } },
+                        { title_english: { contains: searchQuery, mode: 'insensitive' } },
+                        { title_japanese: { contains: searchQuery, mode: 'insensitive' } }
+                    ],
+                },
+                orderBy: {
+                    rating: 'desc'
+                }
             });
-            console.log("Found anime:", animeList.length, "results for query:", searchQuery);
+
+            if (NODE_ENV !== 'production') {
+                console.log(`Search results: ${animeList.length} for query: ${searchQuery}`);
+            }
+
             res.json(animeList);
         } catch (error) {
-            console.error('Error searching anime:', error);
+            console.error('Search error:', error instanceof Error ? error.message : 'Unknown error');
             return res.status(500).json({ message: 'Internal server error.' });
         }
     },

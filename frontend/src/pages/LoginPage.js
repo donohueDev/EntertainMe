@@ -1,9 +1,10 @@
 // LoginPage component for user authentication
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../context/userContext';
 import API_BASE_URL from '../config';
+import RecaptchaComponent from '../components/Recaptcha';
 import {
   Container,
   Box,
@@ -22,6 +23,7 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useUser();
+  const recaptchaRef = useRef(null);
 
   const handleLogin = async (e) => {
     if (e) {
@@ -31,9 +33,16 @@ const LoginPage = () => {
     setErrorMessage('');
 
     try {
+      // Execute reCAPTCHA and get token
+      const recaptchaToken = await recaptchaRef.current?.executeAsync();
+      if (!recaptchaToken) {
+        throw new Error('Failed to verify you are human. Please try again.');
+      }
+
       const response = await axios.post(`${API_BASE_URL}/api/accounts/login`, {
         username,
         password,
+        recaptchaToken
       });
 
       if (response.data.token) {
@@ -54,9 +63,10 @@ const LoginPage = () => {
         setErrorMessage('Login failed. Please check your credentials.');
       }
     } catch (error) {
-      console.error('Login failed:', error);
-      setErrorMessage('Login failed. Please check your credentials.');
+      console.error('Login failed:', error?.response?.data || error.message);
+      setErrorMessage(error?.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
+      recaptchaRef.current?.reset();
       setIsLoading(false);
     }
   };
@@ -188,6 +198,8 @@ const LoginPage = () => {
                 {errorMessage}
               </Alert>
             )}
+
+            <RecaptchaComponent ref={recaptchaRef} />
 
             <Button
               type="submit"

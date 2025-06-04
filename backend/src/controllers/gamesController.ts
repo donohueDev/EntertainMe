@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import axios from 'axios';
 
 const prisma = new PrismaClient();
+const NODE_ENV = process.env.NODE_ENV ?? 'development';
 
 interface Platform {
   id: number;
@@ -61,10 +62,8 @@ const normalizeGameName = (name: string): string => {
 };
 
 const isDuplicateGame = async (game: Game): Promise<boolean> => {
-  // Get the base name of the game (e.g., "black-myth" from "black-myth-wukong")
   const baseSlug = game.slug.split('-').slice(0, -1).join('-');
   
-  // Only fetch games that have a similar base slug
   const potentialDuplicates = await prisma.game.findMany({
     where: {
       NOT: { id: game.id },
@@ -89,9 +88,9 @@ const isDuplicateGame = async (game: Game): Promise<boolean> => {
       const existingNormalized = normalizeGameName(existing.name);
       
       if (newGameNormalized === existingNormalized) {
-        console.log(`Duplicate found:
-          New: "${game.name}" (${game.slug})
-          Existing: "${existing.name}" (${existing.slug})`);
+        if (NODE_ENV !== 'production') {
+          console.log(`Duplicate found: "${game.name}" (${game.slug}) matches "${existing.name}"`);
+        }
         return true;
       }
     }
@@ -104,18 +103,20 @@ const isDuplicateGame = async (game: Game): Promise<boolean> => {
 const processGameData = async (game: Game): Promise<boolean> => {
   try {
     if (await isDuplicateGame(game)) {
-      console.log(`Skipping duplicate game: ${game.name}`);
       return false;
     }
+
     if (!game?.id || !game.slug || !game.name) {
-      console.error('Skipping invalid game data:', game);
+      console.warn('Invalid game data:', { id: game?.id, slug: game?.slug, name: game?.name });
       return false;
     }
+
     const { data: detailedGame } = await axios.get<Game>(`https://api.rawg.io/api/games/${game.id}`, {
       params: { key: process.env.RAWG_API_KEY }
     });
+
     if (!detailedGame) {
-      console.error(`No detailed data found for game ID ${game.id}`);
+      console.warn(`No detailed data found for game ID ${game.id}`);
       return false;
     }
     let esrbRatingId = null;
@@ -140,7 +141,7 @@ const processGameData = async (game: Game): Promise<boolean> => {
     const hasExplicitTags = !!explicitTag;
     const isExplicit = hasExplicitTags;
     // Use compound unique for upsert
-    const createdGame = await prisma.game.upsert({
+    await prisma.game.upsert({
       where: {
         api_source_api_source_id: {
           api_source: 'rawg',
@@ -281,10 +282,15 @@ const processGameData = async (game: Game): Promise<boolean> => {
         } : undefined
       }
     });
-    console.log(`Successfully upserted game ${detailedGame.name} (RAWG ID: ${detailedGame.id})`);
+    if (NODE_ENV !== 'production') {
+      console.log(`Processed: ${detailedGame.name}`);
+    }
     return true;
   } catch (error) {
-    console.error('Error processing game data:', error);
+    console.error('Game processing error:', {
+      game: game?.name || 'unknown',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
     return false;
   }
 };
@@ -307,7 +313,10 @@ export const gamesController = {
       const maxRetries = 3;
       const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
       
-      console.log(`Starting to fetch games from RAWG API... Target: ${targetGames} games`);
+      if (NODE_ENV !== 'production') {
+        console.log(`Starting RAWG fetch. Target: ${targetGames}`);
+      }
+
       while (totalGamesInserted < targetGames) {
         let retryCount = 0;
         let success = false;
@@ -338,18 +347,22 @@ export const gamesController = {
                 // Check for duplicates before processing
                 if (await isDuplicateGame(game)) {
                   duplicatesSkipped++;
-                  console.log(`Skipping duplicate game: ${game.name} (Duplicates skipped: ${duplicatesSkipped})`);
                   continue;
                 }
 
                 const wasInserted = await processGameData(game);
                 if (wasInserted) {
                   totalGamesInserted++;
-                  console.log(`Successfully inserted ${totalGamesInserted} games so far.`);
+                  if (totalGamesInserted % 50 === 0 && NODE_ENV !== 'production') {
+                    console.log(`Progress: ${totalGamesInserted}/${targetGames}`);
+                  }
                 }
                 await delay(100);
               } catch (err) {
-                console.error(`Failed to insert game ${game.id}:`, err instanceof Error ? err.message : 'Unknown error');
+                console.error(`Game insertion failed:`, {
+                  id: game.id,
+                  error: err instanceof Error ? err.message : 'Unknown error'
+                });
               }
             }
 
@@ -376,14 +389,14 @@ export const gamesController = {
         await delay(1000);
       }
 
-      res.status(200).json({ 
+      return res.status(200).json({ 
         message: `Successfully inserted ${totalGamesInserted} games!`,
         totalGames: totalGamesInserted,
         duplicatesSkipped
       });
     } catch (error) {
-      console.error('Error fetching or inserting games:', error);
-      res.status(500).json({ 
+      console.error('RAWG fetch error:', error instanceof Error ? error.message : 'Unknown error');
+      return res.status(500).json({ 
         error: 'Failed to fetch games',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -408,10 +421,10 @@ export const gamesController = {
           }
         }
       });  
-      res.json(games);
+      return res.json(games);
     } catch (error) {
-      console.error('Error fetching games:', error);
-      res.status(500).json({ error: 'Database error' });
+      console.error('Database error in getAllGames:', error instanceof Error ? error.message : 'Unknown error');
+      return res.status(500).json({ error: 'Database error' });
     }
   },
 
@@ -520,11 +533,14 @@ export const gamesController = {
       if (!game) {
         return res.status(404).json({ error: 'Game not found' });
       }
-      console.log('Found game using slug:', game.name);
-      res.json(game);
+
+      if (NODE_ENV !== 'production') {
+        console.log(`Retrieved game: ${game.name}`);
+      }
+      return res.json(game);
     } catch (error) {
-      console.error('Error fetching game:', error);
-      res.status(500).json({ error: 'Database error' });
+      console.error('Error in getGameBySlug:', error instanceof Error ? error.message : 'Unknown error');
+      return res.status(500).json({ error: 'Database error' });
     }
   },
 

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { cronController } from '../controllers/cronController';
 
 const router = Router();
+const NODE_ENV = process.env.NODE_ENV ?? 'development';
 
 // This endpoint will be called by Vercel's cron job
 router.get('/', async (req, res) => {
@@ -9,65 +10,85 @@ router.get('/', async (req, res) => {
         // Verify the request is coming from Vercel
         const authHeader = req.headers.authorization;
         if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+            console.warn('Unauthorized cron job attempt detected');
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        console.log('Starting cron job to update top games and anime...');
-        
         try {
             // Update top games
             await cronController.updateTopGamesInternal();
-            console.log('Successfully updated top games');
+            if (NODE_ENV !== 'production') {
+                console.log('Top games update completed');
+            }
             
             // Wait 1 second to respect API rate limits
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Update top anime
             await cronController.updateTopAnimeInternal();
-            console.log('Successfully updated top anime');
-            
-            console.log('Cron job executed successfully');
-            res.status(200).json({ success: true, message: 'Successfully updated top games and anime' });
+            if (NODE_ENV !== 'production') {
+                console.log('Top anime update completed');
+            }
+
+            return res.status(200).json({ 
+                success: true, 
+                message: 'Successfully updated top games and anime' 
+            });
         } catch (error) {
-            console.error('Error in cron job:', error);
-            res.status(500).json({ error: 'Failed to update top content' });
+            console.error('Cron job execution failed:', {
+                error: error instanceof Error ? error.message : 'Unknown error',
+                timestamp: new Date().toISOString()
+            });
+            return res.status(500).json({ error: 'Failed to update top content' });
         }
     } catch (error) {
-        console.error('Cron job failed:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Cron job request handling failed:', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+        });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 
 // Test endpoint for the cron job (only available in development)
 router.post('/test', async (req, res) => {
-    try {
-        if (process.env.NODE_ENV === 'production') {
-            return res.status(403).json({ error: 'Test endpoint not available in production' });
-        }
+    if (NODE_ENV === 'production') {
+        console.warn('Attempted to access test endpoint in production');
+        return res.status(403).json({ error: 'Test endpoint not available in production' });
+    }
 
-        console.log('Starting test cron job to update top games and anime...');
+    try {
+        console.log('Starting test cron job execution...');
         
         try {
             // Update top games
             await cronController.updateTopGamesInternal();
-            console.log('Successfully updated top games');
+            console.log('Test: Top games update completed');
             
             // Wait 1 second to respect API rate limits
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Update top anime
             await cronController.updateTopAnimeInternal();
-            console.log('Successfully updated top anime');
+            console.log('Test: Top anime update completed');
             
-            console.log('Test cron job executed successfully');
-            res.status(200).json({ success: true, message: 'Successfully updated top games and anime' });
+            return res.status(200).json({ 
+                success: true, 
+                message: 'Test cron job completed successfully' 
+            });
         } catch (error) {
-            console.error('Error in test cron job:', error);
-            res.status(500).json({ error: 'Failed to update top content' });
+            console.error('Test cron job execution failed:', {
+                error: error instanceof Error ? error.message : 'Unknown error',
+                timestamp: new Date().toISOString()
+            });
+            return res.status(500).json({ error: 'Failed to update top content' });
         }
     } catch (error) {
-        console.error('Test cron job failed:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Test cron job request handling failed:', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+        });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 

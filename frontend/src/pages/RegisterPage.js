@@ -1,10 +1,11 @@
 // RegisterPage component for user registration
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import validator from 'validator';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../context/userContext';
 import API_BASE_URL from '../config';
+import RecaptchaComponent from '../components/Recaptcha';
 import {
   Container,
   Box,
@@ -24,10 +25,9 @@ const RegisterPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useUser();
+  const recaptchaRef = useRef(null);
 
   const handleRegister = async () => {
-    console.log("Register button pressed, making API call...");
-
     if (!email || !username || !password) {
       setErrorMessage('Please fill in all fields.');
       return;
@@ -51,13 +51,18 @@ const RegisterPage = () => {
     setIsLoading(true);
 
     try {
+      // Execute reCAPTCHA and get token
+      const recaptchaToken = await recaptchaRef.current?.executeAsync();
+      if (!recaptchaToken) {
+        throw new Error('Failed to verify you are human. Please try again.');
+      }
+
       const response = await axios.post(`${API_BASE_URL}/api/accounts/register`, {
         email,
         username,
         password,
+        recaptchaToken
       });
-
-      console.log('Registration response:', response.data);
 
       if (response.data && response.data.token) {
         // Store the token and update auth state
@@ -70,7 +75,6 @@ const RegisterPage = () => {
 
         // Add a small delay to ensure state is updated
         setTimeout(() => {
-          // Navigate to the Profile page to complete setup
           const userInfo = JSON.parse(atob(response.data.token.split('.')[1]));
           navigate(`/user/${userInfo.username}/profile`, { 
             replace: true,
@@ -81,13 +85,15 @@ const RegisterPage = () => {
         setErrorMessage('Registration failed. Please try again.');
       }
     } catch (err) {
-      console.log("Error during registration:", err);
+      // Keep error logging for debugging issues in production
+      console.error('Registration error:', err?.response?.data || err.message);
       if (err.response && err.response.data) {
         setErrorMessage(err.response.data.message || 'Registration failed');
       } else {
-        setErrorMessage('Server error, please try again.');
+        setErrorMessage(err.message || 'Server error, please try again.');
       }
     } finally {
+      recaptchaRef.current?.reset();
       setIsLoading(false);
     }
   };
@@ -261,6 +267,8 @@ const RegisterPage = () => {
                 {errorMessage}
               </Alert>
             )}
+
+            <RecaptchaComponent ref={recaptchaRef} />
 
             <Button
               variant="contained"

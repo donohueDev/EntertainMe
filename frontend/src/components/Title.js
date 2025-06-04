@@ -48,7 +48,7 @@ const Title = () => {
       }
     }}
   >
-    Entertain<span>ME</span>
+    Entertain<span>Me</span>
   </Box>
 
   <Box

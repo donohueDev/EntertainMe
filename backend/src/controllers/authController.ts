@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
+import { verifyRecaptcha } from '../utils/verifyRecaptcha';
 
 dotenv.config();
 
@@ -21,11 +22,13 @@ interface RegisterRequest {
   email: string;
   username: string;
   password: string;
+  recaptchaToken: string;
 }
 
 interface LoginRequest {
   username: string;
   password: string;
+  recaptchaToken: string;
 }
 
 interface JwtPayload {
@@ -33,12 +36,20 @@ interface JwtPayload {
   username: string;
 }
 
+
+
+
 export const authController = {
   register: async (req: Request<object, {}, RegisterRequest>, res: Response) => {
-    const { email, username, password } = req.body;
-    console.log("Request to /api/accounts/register");
+    const { email, username, password, recaptchaToken } = req.body;
 
     try {
+      // Verify reCAPTCHA token
+      const isValid = await verifyRecaptcha(recaptchaToken);
+      if (!isValid) {
+        return res.status(400).json({ message: 'Failed to verify you are human. Please try again.' });
+      }
+
       // Check if username or email already exists
       const existingUser = await prisma.user.findFirst({
         where: {
@@ -106,10 +117,15 @@ export const authController = {
   },
 
   login: async (req: Request<object, {}, LoginRequest>, res: Response) => {
-    const { username, password } = req.body;
-    console.log("Request to /api/accounts/login");
+    const { username, password, recaptchaToken } = req.body;
 
     try {
+      // Verify reCAPTCHA token
+      const isValid = await verifyRecaptcha(recaptchaToken);
+      if (!isValid) {
+        return res.status(400).json({ message: 'Failed to verify you are human. Please try again.' });
+      }
+
       // Find user by username or email
       const user = await prisma.user.findFirst({
         where: {

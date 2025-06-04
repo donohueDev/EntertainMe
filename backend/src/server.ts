@@ -23,15 +23,15 @@ const PORT = process.env.PORT ?? 5001;
 const NODE_ENV = process.env.NODE_ENV ?? 'development';
 
 // Initialize Prisma Client
-console.log('Initializing Prisma Client...');
 const prisma = new PrismaClient();
-console.log('Prisma Client initialized successfully');
 
-// Add request logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-  next();
-});
+// Add request logging middleware only for non-production environments
+if (NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+  });
+}
 
 // Configure CORS
 const allowedOrigins =
@@ -48,27 +48,40 @@ const allowedOrigins =
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // allow non-browser requests
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error('Not allowed by CORS'));
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      // Only log CORS errors in development
+      if (NODE_ENV !== 'production') {
+        console.warn(`CORS blocked request from origin: ${origin}`);
+      }
+      return callback(new Error(`Origin ${origin} not allowed by CORS`));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
+    optionsSuccessStatus: 204,
+    maxAge: 86400
   })
 );
+
+// Handle preflight requests explicitly
+app.options('*', cors());
 
 // Middleware
 app.use(express.json());
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error details:', {
+  // Log error details in any environment, but clean them up for production
+  const errorDetails = {
     message: err.message,
-    stack: err.stack,
     url: req.url,
-    method: req.method
-  });
+    method: req.method,
+    ...(NODE_ENV !== 'production' && { stack: err.stack })
+  };
+  console.error('Error:', errorDetails);
+  
   res.status(500).json({
     message: 'Something went wrong!',
     error: NODE_ENV === 'development' ? err.message : 'Internal server error'
@@ -110,25 +123,25 @@ app.get('/', (req, res) => {
 // Start server and check Prisma connection
 async function startServer() {
   try {
-    await prisma.$connect(); // Ensure Prisma Client can connect to the database
-    console.log('Database connection successful');
-
+    await prisma.$connect();
+    
     app.listen(PORT, () => {
-      console.log(`Server is running in ${NODE_ENV} mode on port ${PORT}`);
-      console.log('Environment variables loaded:', {
-        NODE_ENV,
-        PORT,
-        DB_HOST: process.env.DB_HOST,
-        DB_NAME: process.env.DB_NAME,
-        DB_USER: process.env.DB_USER
-      });
+      console.log(`Server started in ${NODE_ENV} mode on port ${PORT}`);
+      
+      // Only log detailed env info in development
+      if (NODE_ENV !== 'production') {
+        console.log('Environment:', {
+          NODE_ENV,
+          PORT,
+          DB_HOST: process.env.DB_HOST,
+          DB_NAME: process.env.DB_NAME
+        });
+      }
     });
   } catch (error) {
-    console.error('Failed to connect to the database:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 }
-
-console.log('DATABASE_URL:', process.env.DATABASE_URL);
 
 startServer();
