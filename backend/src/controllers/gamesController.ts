@@ -675,14 +675,19 @@ export const gamesController = {
       candidateGames.sort((a, b) => b.combinedScore - a.combinedScore);
       // Take as many as we have (up to 100)
       const topGames = candidateGames.slice(0, 100);
-      // If we have less than 100, fill the rest with highest rawg-rated games from the local DB
+      // If we have less than 100, fill the rest with highest rawg-rated games from the last year in the local DB
       if (topGames.length < 100) {
         const needed = 100 - topGames.length;
-        // Get highest rated games from DB that are not already in topGames
+        // Get highest rated games from DB that are not already in topGames and were released in the last year
         const extraGames = await prisma.game.findMany({
           where: {
             id: { notIn: topGames.map(g => g.id) },
             rawg_rating: { not: null },
+            // Ensure game was released in the last year
+            released: {
+              gte: oneYearAgo,
+              lte: today
+            },
             // Exclude adult content
             adultContent: null
           },
