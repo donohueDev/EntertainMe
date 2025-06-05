@@ -74,6 +74,18 @@ const LoginPage = () => {
       console.error('Login failed:', error);
       const responseData = error?.response?.data;
 
+      // If it's a verification required error, redirect to verification page
+      if (error?.response?.status === 403 && responseData?.requiresVerification) {
+        const email = responseData?.user?.email || (username.includes('@') ? username : '');
+        navigate('/auth/verify-email', { 
+          state: { 
+            email,
+            message: responseData?.message 
+          }
+        });
+        return;
+      }
+
       // Handle other errors
       setErrorMessage(responseData?.message || 'Login failed. Please check your credentials.');
     } finally {
