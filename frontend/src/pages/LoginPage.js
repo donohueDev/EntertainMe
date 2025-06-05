@@ -52,8 +52,12 @@ const LoginPage = () => {
     if (e) {
       e.preventDefault();
     }
-    setIsLoading(true);
+    // Clear previous error messages and verification states
     setErrorMessage('');
+    setRequiresVerification(false);
+    setVerificationEmail('');
+
+    setIsLoading(true);
 
     try {
       // Execute reCAPTCHA and get token
