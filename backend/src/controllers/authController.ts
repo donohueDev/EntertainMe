@@ -3,7 +3,10 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 import { verifyRecaptcha } from '../utils/verifyRecaptcha';
+import { sendEmail } from '../utils/sendEmail';
+import { createVerificationEmailTemplate } from '../utils/emailTemplates';
 
 dotenv.config();
 
@@ -17,6 +20,8 @@ const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET is not defined in environment variables');
 }
+
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 interface RegisterRequest {
   email: string;
@@ -34,6 +39,10 @@ interface LoginRequest {
 interface JwtPayload {
   userId: number;
   username: string;
+}
+
+interface VerifyEmailRequest {
+  token: string;
 }
 
 
@@ -69,50 +78,120 @@ export const authController = {
         }
       }
 
+      // Generate verification token
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-      // Create new user with initial values
+      // Create new user with initial values and verification data
       const newUser = await prisma.user.create({
         data: {
           email,
           username,
           password: hashedPassword,
-          display_name: username, // Initially set display name to username
-          last_login: new Date(),
-          last_activity: new Date(),
-          is_active: true,
-          login_count: 1,
-          preferences: {},
-          content_filters: {},
-        },
-        select: {
-          id: true,
-          email: true,
-          username: true,
-          display_name: true,
-          avatar_url: true,
-          preferences: true,
-        },
+          email_verified: false,
+          verification_token: verificationToken,
+          verification_token_expires: verificationExpires,
+          created_at: new Date()
+        }
       });
 
-      const token = jwt.sign(
-        { userId: newUser.id, username: newUser.username },
-        JWT_SECRET,
-        { expiresIn: '1h' }
-      );
+      // Send verification email
+      const emailTemplate = createVerificationEmailTemplate(username, verificationToken, FRONTEND_URL);
+      await sendEmail({
+        to: email,
+        ...emailTemplate
+      });
 
       return res.status(201).json({
-        message: 'User registered successfully',
-        token,
+        message: 'Registration successful! Please check your email to verify your account.',
         userId: newUser.id,
-        username: newUser.username,
-        email: newUser.email
       });
 
     } catch (error) {
       console.error('Registration failed:', error);
       return res.status(500).json({ message: 'Internal server error during registration' });
+    }
+  },
+
+  verifyEmail: async (req: Request<object, {}, VerifyEmailRequest>, res: Response) => {
+    const { token } = req.body;
+
+    try {
+      // Find user with matching verification token
+      const user = await prisma.user.findFirst({
+        where: {
+          verification_token: token,
+          verification_token_expires: {
+            gte: new Date() // Token hasn't expired
+          }
+        }
+      });
+
+      if (!user) {
+        return res.status(400).json({ message: 'Invalid or expired verification token' });
+      }
+
+      // Update user to mark email as verified
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          email_verified: true,
+          verification_token: null,
+          verification_token_expires: null
+        }
+      });
+
+      return res.status(200).json({ message: 'Email verified successfully' });
+    } catch (error) {
+      console.error('Error verifying email:', error);
+      return res.status(500).json({ message: 'Server error verifying email' });
+    }
+  },
+
+  resendVerification: async (req: Request, res: Response) => {
+    const { email } = req.body;
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email }
+      });
+
+      if (!user) {
+        // Return success even if email doesn't exist to prevent email enumeration
+        return res.status(200).json({ message: 'Verification email sent if account exists' });
+      }
+
+      if (user.email_verified) {
+        return res.status(400).json({ message: 'Email is already verified' });
+      }
+
+      // Generate new verification token
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      // Update user with new verification token
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          verification_token: verificationToken,
+          verification_token_expires: verificationExpires
+        }
+      });
+
+      // Send new verification email
+      const emailTemplate = createVerificationEmailTemplate(user.username, verificationToken, FRONTEND_URL);
+      await sendEmail({
+        to: email,
+        ...emailTemplate
+      });
+
+      return res.status(200).json({ message: 'Verification email sent if account exists' });
+    } catch (error) {
+      console.error('Error resending verification:', error);
+      return res.status(500).json({ message: 'Server error sending verification email' });
     }
   },
 
@@ -126,37 +205,35 @@ export const authController = {
         return res.status(400).json({ message: 'Failed to verify you are human. Please try again.' });
       }
 
-      // Find user by username or email
+      // Find user by username
       const user = await prisma.user.findFirst({
         where: {
           OR: [
             { username: username },
-            { email: username }
+            { email: username } // Allow login with email too
           ]
-        },
-        select: {
-          id: true,
-          email: true,
-          username: true,
-          password: true,
-          display_name: true,
-          avatar_url: true,
-          preferences: true,
-          last_login: true,
-          last_activity: true
         }
       });
 
       if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+        return res.status(401).json({ message: 'Invalid username or password' });
       }
 
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        return res.status(400).json({ message: 'Invalid credentials' });
+      // Check if email is verified
+      if (!user.email_verified) {
+        return res.status(403).json({ 
+          message: 'Please verify your email before logging in',
+          requiresVerification: true 
+        });
       }
 
-      // Update last_login and last_activity
+      // Verify password
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: 'Invalid username or password' });
+      }
+
+      // Update login stats
       await prisma.user.update({
         where: { id: user.id },
         data: {
@@ -168,22 +245,30 @@ export const authController = {
         }
       });
 
+      // Generate JWT token
       const token = jwt.sign(
-        { userId: user.id, username: user.username },
+        { 
+          userId: user.id, 
+          username: user.username 
+        },
         JWT_SECRET,
-        { expiresIn: '1h' }
+        { expiresIn: '7d' }
       );
 
-      const { password: _, ...userWithoutPassword } = user;
-      
-      return res.json({
-        message: 'Login successful',
+      return res.status(200).json({
         token,
-        user: userWithoutPassword
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          display_name: user.display_name,
+          avatar_url: user.avatar_url,
+          preferences: user.preferences,
+        }
       });
     } catch (error) {
-      console.error('Login failed:', error);
-      return res.status(500).json({ message: 'Internal server error during login' });
+      console.error('Login error:', error);
+      return res.status(500).json({ message: 'Server error during login' });
     }
   },
 

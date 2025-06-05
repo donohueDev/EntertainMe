@@ -20,6 +20,8 @@ import Register from './pages/RegisterPage';
 import AccountDashboard from './pages/AccountDashboard';
 import AnimeDetailPage from './pages/animeDetailPage';
 import ProfilePage from './pages/ProfilePage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import VerificationSuccessPage from './pages/VerificationSuccessPage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -28,7 +30,7 @@ const ProtectedRoute = ({ children }) => {
 
   useEffect(() => {
     if (!isInitializing && !isAuthenticated) {
-      navigate('/account', { replace: true });
+      navigate('/auth/login', { replace: true });
     }
   }, [isAuthenticated, isInitializing, navigate]);
 
@@ -240,7 +242,6 @@ const Navigation = () => {
 
 // Create a new component to handle routing
 const AppRoutes = () => {
-  
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
@@ -248,6 +249,10 @@ const AppRoutes = () => {
       <Route path="/search" element={<SearchPage />} />
       <Route path="/auth/register" element={<Register />} />
       <Route path="/auth/login" element={<LoginPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/auth/verify-email-sent" element={<VerifyEmailPage />} />
+      <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/auth/verify-email-success" element={<VerificationSuccessPage />} />
       <Route 
         path="/user/:username/dashboard" 
         element={

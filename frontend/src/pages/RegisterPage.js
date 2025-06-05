@@ -2,9 +2,8 @@
 import React, { useState, useRef } from 'react';
 import validator from 'validator';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { useUser } from '../context/userContext';
-import API_BASE_URL from '../config';
+import axiosInstance from '../utils/axiosConfig';
 import RecaptchaComponent from '../components/Recaptcha';
 import {
   Container,
@@ -49,6 +48,7 @@ const RegisterPage = () => {
     }
     
     setIsLoading(true);
+    setErrorMessage('');
 
     try {
       // Execute reCAPTCHA and get token
@@ -57,43 +57,31 @@ const RegisterPage = () => {
         throw new Error('Failed to verify you are human. Please try again.');
       }
 
-      const response = await axios.post(`${API_BASE_URL}/api/accounts/register`, {
+      const response = await axiosInstance.post('/api/accounts/register', {
         email,
         username,
         password,
         recaptchaToken
       });
 
-      if (response.data && response.data.token) {
-        // Store the token and update auth state
-        login(response.data.token);
-        
-        // Clear the input fields
-        setEmail('');
-        setUsername('');
-        setPassword('');
+      // Clear the input fields
+      setEmail('');
+      setUsername('');
+      setPassword('');
 
-        // Add a small delay to ensure state is updated
-        setTimeout(() => {
-          const userInfo = JSON.parse(atob(response.data.token.split('.')[1]));
-          navigate(`/user/${userInfo.username}/profile`, { 
-            replace: true,
-            state: { isNewUser: true }
-          });
-        }, 100);
-      } else {
-        setErrorMessage('Registration failed. Please try again.');
-      }
-    } catch (err) {
-      // Keep error logging for debugging issues in production
-      console.error('Registration error:', err?.response?.data || err.message);
-      if (err.response && err.response.data) {
-        setErrorMessage(err.response.data.message || 'Registration failed');
-      } else {
-        setErrorMessage(err.message || 'Server error, please try again.');
-      }
-    } finally {
+      // Show success message and instructions
+      navigate('/auth/verify-email-sent', { 
+        replace: true,
+        state: { 
+          email: email,
+          message: response.data.message
+        }
+      });
+    } catch (error) {
+      console.error('Registration failed:', error);
+      setErrorMessage(error.message || 'Registration failed. Please try again.');
       recaptchaRef.current?.reset();
+    } finally {
       setIsLoading(false);
     }
   };

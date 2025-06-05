@@ -1,9 +1,8 @@
 // LoginPage component for user authentication
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { useUser } from '../context/userContext';
-import API_BASE_URL from '../config';
+import axiosInstance from '../utils/axiosConfig';
 import RecaptchaComponent from '../components/Recaptcha';
 import {
   Container,
@@ -39,8 +38,8 @@ const LoginPage = () => {
         throw new Error('Failed to verify you are human. Please try again.');
       }
 
-      const response = await axios.post(`${API_BASE_URL}/api/accounts/login`, {
-        username,
+      const response = await axiosInstance.post('/api/accounts/login', {
+        username, // This can be either username or email
         password,
         recaptchaToken
       });
@@ -63,8 +62,20 @@ const LoginPage = () => {
         setErrorMessage('Login failed. Please check your credentials.');
       }
     } catch (error) {
-      console.error('Login failed:', error?.response?.data || error.message);
-      setErrorMessage(error?.response?.data?.message || 'Login failed. Please check your credentials.');
+      console.error('Login failed:', error);
+      if (error?.requiresVerification) {
+        // Handle unverified email case
+        navigate('/auth/verify-email-sent', {
+          replace: true,
+          state: {
+            email: username,
+            message: 'Please verify your email before logging in. Check your inbox for the verification link.',
+            showResend: true
+          }
+        });
+        return;
+      }
+      setErrorMessage(error?.message || 'Login failed. Please check your credentials.');
     } finally {
       recaptchaRef.current?.reset();
       setIsLoading(false);
@@ -130,11 +141,12 @@ const LoginPage = () => {
               fullWidth
               id="username"
               name="username"
-              label="Username"
+              label="Username or Email"
               variant="outlined"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              helperText="Enter your username or email address"
               sx={{
                 '& .MuiOutlinedInput-root': {
                   '& fieldset': {
@@ -155,6 +167,9 @@ const LoginPage = () => {
                 },
                 '& .MuiInputBase-input': {
                   color: 'white',
+                },
+                '& .MuiFormHelperText-root': {
+                  color: 'rgba(255, 255, 255, 0.7)',
                 },
               }}
             />
