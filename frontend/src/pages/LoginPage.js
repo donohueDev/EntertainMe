@@ -87,13 +87,14 @@ const LoginPage = () => {
       }
     } catch (error) {
       console.error('Login failed:', error);
-      if (error.response?.data?.requiresVerification) {
+      if (error?.response?.status === 403 && error.response?.data?.requiresVerification) {
         setRequiresVerification(true);
         setVerificationEmail(error.response?.data?.user?.email);
         setErrorMessage('Please verify your email before logging in');
         return;
       }
-      setErrorMessage(error?.message || 'Login failed. Please check your credentials.');
+      setRequiresVerification(false); // Reset verification state for other errors
+      setErrorMessage(error?.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       recaptchaRef.current?.reset();
       setIsLoading(false);
@@ -227,10 +228,11 @@ const LoginPage = () => {
             />
 
             {errorMessage && (
-              <Alert severity="error" sx={{ mt: 2 }}>
-                {errorMessage}
-                {requiresVerification && (
-                  <Box sx={{ mt: 1 }}>
+              <Alert 
+                severity="error" 
+                sx={{ mt: 2 }}
+                action={
+                  requiresVerification && (
                     <Button
                       variant="outlined"
                       size="small"
@@ -246,8 +248,10 @@ const LoginPage = () => {
                     >
                       {isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
                     </Button>
-                  </Box>
-                )}
+                  )
+                }
+              >
+                {errorMessage}
               </Alert>
             )}
 
