@@ -188,7 +188,7 @@ export const authController = {
         ...emailTemplate
       });
 
-      return res.status(200).json({ message: 'Verification email sent if account exists' });
+      return res.status(200).json({ message: 'Verification email sent if account exists', email: user.email });
     } catch (error) {
       console.error('Error resending verification:', error);
       return res.status(500).json({ message: 'Server error sending verification email' });

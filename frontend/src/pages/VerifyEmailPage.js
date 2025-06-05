@@ -60,17 +60,14 @@ const VerifyEmailPage = () => {
 
     setIsLoading(true);
     try {
-      await axiosInstance.post('/api/auth/resend-verification', {
-        email: email.trim() // Clean up email and ensure it's the actual email address
-      });
+      const res = await axiosInstance.post('/api/auth/resend-verification', { email: email.trim() });
+      const sentTo = res.data.email || email;
 
-      // Even if the email doesn't exist, we show success to prevent email enumeration
       setError('');
-      // Update the message to show that a new verification email was sent
       navigate('/auth/verify-email-sent', {
         replace: true,
         state: {
-          email,
+          email: sentTo,
           message: 'A new verification email has been sent. Please check your inbox.',
           showResend: true
         }
