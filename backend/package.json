@@ -12,7 +12,7 @@
     "migrate:safe": "npm run migrate:fix && npm run migrate:deploy",
     "start": "npm run migrate:safe && node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && prisma generate && tsc -p tsconfig.build.json",
     "test": "jest",
     "test-db": "ts-node src/db/testConnection.ts",
     "prisma:generate": "prisma generate",
