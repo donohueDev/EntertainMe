@@ -7,7 +7,6 @@ services:
     plan: free
     buildCommand: cd backend && npm install && npm run build
     startCommand: cd backend && npm start
-    rootDir: backend
     envVars:
       - key: NODE_ENV
         value: production
