@@ -87,14 +87,18 @@ const LoginPage = () => {
       }
     } catch (error) {
       console.error('Login failed:', error);
-      if (error?.response?.status === 403 && error.response?.data?.requiresVerification) {
+      const responseData = error?.response?.data;
+      
+      if (error?.response?.status === 403 && responseData?.requiresVerification) {
         setRequiresVerification(true);
-        setVerificationEmail(error.response?.data?.user?.email);
-        setErrorMessage('Please verify your email before logging in');
-        return;
+        setVerificationEmail(responseData?.user?.email || '');
+        setErrorMessage(responseData?.message || 'Please verify your email before logging in');
+      } else {
+        // Reset verification states for other errors
+        setRequiresVerification(false);
+        setVerificationEmail('');
+        setErrorMessage(responseData?.message || 'Login failed. Please check your credentials.');
       }
-      setRequiresVerification(false); // Reset verification state for other errors
-      setErrorMessage(error?.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       recaptchaRef.current?.reset();
       setIsLoading(false);
@@ -230,7 +234,13 @@ const LoginPage = () => {
             {errorMessage && (
               <Alert 
                 severity="error" 
-                sx={{ mt: 2 }}
+                sx={{ 
+                  mt: 2,
+                  border: '1px solid rgba(211, 47, 47, 0.5)',
+                  '& .MuiAlert-message': {
+                    color: '#fff'
+                  }
+                }}
                 action={
                   requiresVerification && (
                     <Button
@@ -239,10 +249,16 @@ const LoginPage = () => {
                       onClick={handleResendVerification}
                       disabled={isResendingVerification}
                       sx={{
-                        color: 'white',
+                        backgroundColor: 'rgba(211, 47, 47, 0.1)',
+                        color: '#fff',
                         borderColor: 'rgba(255, 255, 255, 0.5)',
                         '&:hover': {
-                          borderColor: 'white'
+                          backgroundColor: 'rgba(211, 47, 47, 0.2)',
+                          borderColor: '#fff'
+                        },
+                        '&:disabled': {
+                          color: 'rgba(255, 255, 255, 0.3)',
+                          borderColor: 'rgba(255, 255, 255, 0.3)'
                         }
                       }}
                     >
