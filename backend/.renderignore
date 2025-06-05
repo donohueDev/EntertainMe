@@ -1,0 +1,8 @@
+**/tests/**
+**/test_*.ts
+**/*.test.ts
+**/*.test.js
+**/*.spec.ts
+**/*.spec.js
+jest.config.js
+test_server.ts
