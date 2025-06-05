@@ -299,6 +299,7 @@ function App() {
       <CssBaseline />
       <UserProvider>
         <Router>
+          <Navigation />
           <AppContent />
         </Router>
       </UserProvider>
