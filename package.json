@@ -6,5 +6,8 @@
     "install": "npm install --prefix backend",
     "start": "npm run start --prefix backend",
     "dev": "npm run dev --prefix backend"
+  },
+  "dependencies": {
+    "react-turnstile": "^1.1.4"
   }
 }

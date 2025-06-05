@@ -1,39 +1,69 @@
-import React, { forwardRef, useEffect, useImperativeHandle } from 'react';
-import ReCAPTCHA from 'react-google-recaptcha';
+import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import Turnstile from 'react-turnstile';
 
-const RECAPTCHA_SITE_KEY = '6LcKDlYrAAAAAJnM0YoBwTVazLmXp5x54THSXY12';
+const TURNSTILE_SITE_KEY = '0x4AAAAAABgK38f_-bJahc-Q';
 
-const RecaptchaComponent = forwardRef((props, ref) => {
-  const recaptchaRef = React.useRef();
+const TurnstileComponent = forwardRef((props, ref) => {
+  const [currentToken, setCurrentToken] = useState(null);
+
+  const handleSuccess = (token) => {
+    setCurrentToken(token);
+  };
+
+  const handleError = () => {
+    setCurrentToken(null);
+  };
+
+  const handleExpire = () => {
+    setCurrentToken(null);
+  };
 
   useImperativeHandle(ref, () => ({
-    executeAsync: () => recaptchaRef.current?.executeAsync(),
-    reset: () => recaptchaRef.current?.reset()
-  }));
-
-  // Add reCAPTCHA token refresh timer
-  useEffect(() => {
-    // Refresh reCAPTCHA token every 110 seconds (tokens expire after 2 minutes)
-    const refreshInterval = setInterval(() => {
-      if (recaptchaRef.current) {
-        recaptchaRef.current.reset();
-        recaptchaRef.current.executeAsync();
+    executeAsync: async () => {
+      // If we have a current token, return it
+      if (currentToken) {
+        return currentToken;
       }
-    }, 110000);
-
-    return () => clearInterval(refreshInterval);
-  }, []);
+      
+      // Wait for token generation (should be quick since Turnstile auto-completes)
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Verification challenge timed out. Please try again.'));
+        }, 8000);
+        
+        const checkForToken = () => {
+          if (currentToken) {
+            clearTimeout(timeout);
+            resolve(currentToken);
+          } else {
+            setTimeout(checkForToken, 100);
+          }
+        };
+        
+        checkForToken();
+      });
+    },
+    
+    ready: true
+  }), [currentToken]);
 
   return (
-    <ReCAPTCHA
-      ref={recaptchaRef}
-      sitekey={RECAPTCHA_SITE_KEY}
-      size="invisible"
-      {...props}
-    />
+    <div style={{ margin: '16px 0', display: 'flex', justifyContent: 'center' }}>
+      <Turnstile
+        sitekey={TURNSTILE_SITE_KEY}
+        size="normal"
+        theme="dark"
+        refreshExpired="auto"
+        retry="auto"
+        onSuccess={handleSuccess}
+        onError={handleError}
+        onExpire={handleExpire}
+        {...props}
+      />
+    </div>
   );
 });
 
-RecaptchaComponent.displayName = 'RecaptchaComponent';
+TurnstileComponent.displayName = 'TurnstileComponent';
 
-export default RecaptchaComponent;
+export default TurnstileComponent;

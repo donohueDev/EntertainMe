@@ -72,20 +72,37 @@ const VerificationSuccessPage = () => {
             Your email has been successfully verified. You can now log in to your account and start exploring EntertainMe.
           </Typography>
 
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={handleLogin}
-            sx={{
-              backgroundColor: 'goldenrod',
-              color: '#051426',
-              '&:hover': {
-                backgroundColor: 'darkgoldenrod'
-              }
-            }}
-          >
-            Log In to Your Account
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleLogin}
+              sx={{
+                backgroundColor: 'goldenrod',
+                color: '#051426',
+                '&:hover': {
+                  backgroundColor: 'darkgoldenrod'
+                }
+              }}
+            >
+              Log In to Your Account
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={() => navigate('/', { replace: true })}
+              sx={{
+                borderColor: 'goldenrod',
+                color: 'goldenrod',
+                '&:hover': {
+                  borderColor: 'darkgoldenrod',
+                  backgroundColor: 'rgba(218, 165, 32, 0.1)'
+                }
+              }}
+            >
+              Go to Home Page
+            </Button>
+          </Box>
         </Paper>
       </Box>
     </Container>

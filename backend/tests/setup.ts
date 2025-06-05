@@ -1,4 +1,4 @@
-import app from '../src/test_server';
+import app from './test_server';
 import 'jest';
 
 // Global test setup

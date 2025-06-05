@@ -1,5 +1,5 @@
 export const createVerificationEmailTemplate = (username: string, verificationToken: string, frontendUrl: string) => {
-  const verificationLink = `${frontendUrl}/verify-email?token=${verificationToken}`;
+  const verificationLink = `${frontendUrl}/auth/verify-email?token=${verificationToken}`;
   
   return {
     subject: 'Verify Your Email - EntertainMe',

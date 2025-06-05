@@ -1,9 +1,8 @@
-// LoginPage component for user authentication
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/userContext';
 import axiosInstance from '../utils/axiosConfig';
-import RecaptchaComponent from '../components/Recaptcha';
+import TurnstileComponent from '../components/Recaptcha';
 import {
   Container,
   Box,
@@ -20,76 +19,140 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const navigate = useNavigate();
   const { login } = useUser();
   const recaptchaRef = useRef(null);
+  const hasRestoredState = useRef(false);
 
-  const handleLogin = async (e) => {
-    if (e) {
-      e.preventDefault();
-    }
-    setErrorMessage('');
-    setIsLoading(true);
-
-    try {
-      // Execute reCAPTCHA and get token
-      let recaptchaToken;
-      try {
-        recaptchaToken = await recaptchaRef.current?.executeAsync();
-      } catch (recaptchaError) {
-        console.error('reCAPTCHA error:', recaptchaError);
-        setErrorMessage('Failed to verify you are human. Please refresh the page and try again.');
-        return;
+  // Restore username and error message after page reload
+  useEffect(() => {
+    // Prevent double restoration in React Strict Mode
+    if (hasRestoredState.current) return;
+    
+    const savedUsername = sessionStorage.getItem('loginUsername');
+    const savedError = sessionStorage.getItem('loginError');
+    const savedVerificationNeeded = sessionStorage.getItem('loginNeedsVerification');
+    
+    console.log('LoginPage restored state:', {
+      savedUsername,
+      savedError,
+      savedVerificationNeeded
+    });
+    
+    // Only process if we have values to restore
+    if (savedUsername || savedError || savedVerificationNeeded) {
+      hasRestoredState.current = true;
+      
+      if (savedUsername) {
+        setUsername(savedUsername);
       }
       
+      if (savedError) {
+        setErrorMessage(savedError);
+      }
+      
+      if (savedError === 'Please verify your email before logging in') {
+        console.log('Setting needsEmailVerification to true');
+        setNeedsEmailVerification(true);
+      }
+      
+      // Clean up sessionStorage after successfully restoring state
+      sessionStorage.removeItem('loginUsername');
+      sessionStorage.removeItem('loginError');
+      sessionStorage.removeItem('loginNeedsVerification');
+    }
+  }, []);
+
+  const handleLogin = async (e) => {
+    if (e) e.preventDefault();
+
+    if (!username || !password) {
+      setErrorMessage('Please fill in all fields');
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage('');
+
+    try {
+      // Await the Turnstile token
+      const recaptchaToken = await recaptchaRef.current?.executeAsync();
       if (!recaptchaToken) {
-        setErrorMessage('Failed to verify you are human. Please refresh the page and try again.');
+        setErrorMessage('Failed to verify you are human. Please try again.');
+        setIsLoading(false);
         return;
       }
 
-      const response = await axiosInstance.post('/api/accounts/login', {
-        username, // This can be either username or email
+      const response = await axiosInstance.post('/api/auth/login', {
+        username,
         password,
         recaptchaToken
       });
 
       if (response.data.token) {
-        // Store the token and update auth state
         login(response.data.token);
-        
-        // Clear the input fields
         setUsername('');
         setPassword('');
-
-        // Add a small delay to ensure state is updated
-        setTimeout(() => {
-          // Navigate to the Account Dashboard with username
-          const userInfo = JSON.parse(atob(response.data.token.split('.')[1]));
-          navigate(`/user/${userInfo.username}/dashboard`, { replace: true });
-        }, 100);
-      } else {
-        setErrorMessage('Login failed. Please check your credentials.');
+        const userInfo = JSON.parse(atob(response.data.token.split('.')[1]));
+        navigate(`/user/${userInfo.username}/dashboard`, { replace: true });
       }
     } catch (error) {
       console.error('Login failed:', error);
-      const responseData = error?.response?.data;
-
-      // If it's a verification required error, redirect to verification page
-      if (error?.response?.status === 403 && responseData?.requiresVerification) {
-        const email = responseData?.user?.email || (username.includes('@') ? username : '');
-        navigate('/auth/verify-email', { 
-          state: { 
-            email,
-            message: responseData?.message 
-          }
-        });
+      
+      const isEmailVerificationError = error.response?.status === 403 &&
+        (
+          error.response?.data?.requiresVerification === true ||
+          (typeof error.response?.data?.message === 'string' &&
+            (error.response.data.message.toLowerCase().includes('verify your email') ||
+             error.response.data.message.toLowerCase().includes('verify email')))
+        );
+      
+      console.log('Error details:', {
+        status: error.response?.status,
+        requiresVerification: error.response?.data?.requiresVerification,
+        message: error.response?.data?.message,
+        isEmailVerificationError
+      });
+      
+      console.log('Setting loginNeedsVerification:', isEmailVerificationError, error.response?.data);
+      if (isEmailVerificationError) {
+        // For email verification errors, store state and reload page
+        const errorMsg = error?.response?.data?.message || 'Please verify your email before logging in';
+        
+        console.log('Storing email verification error, will reload page');
+        sessionStorage.setItem('loginUsername', username);
+        sessionStorage.setItem('loginError', errorMsg);
+        sessionStorage.setItem('loginNeedsVerification', 'true');
+        
+        // Show loading state while refreshing
+        setIsRefreshing(true);
+        
+        // Reload page after a brief delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
         return;
       }
-
-      // Handle other errors
-      setErrorMessage(responseData?.message || 'Login failed. Please check your credentials.');
+      
+      // For other login failures, store state and reload page for fresh Turnstile
+      const errorMsg = error?.response?.data?.message || error.message || 'Login failed. Please check your credentials.';
+      
+      // Save username and error message for after reload
+      sessionStorage.setItem('loginUsername', username);
+      sessionStorage.setItem('loginError', errorMsg);
+      
+      // Show loading state while refreshing
+      setIsRefreshing(true);
+      
+      // Reload page after a brief delay to give user feedback
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      
     } finally {
-      recaptchaRef.current?.reset();
       setIsLoading(false);
     }
   };
@@ -116,8 +179,8 @@ const LoginPage = () => {
             boxShadow: '0 0 15px rgba(218, 165, 32, 0.1)'
           }}
         >
-          <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ 
-            mb: 4, 
+          <Typography variant="h3" component="h1" gutterBottom align="center" sx={{
+            mb: 4,
             color: 'white',
             fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
             fontWeight: 'bold',
@@ -144,8 +207,9 @@ const LoginPage = () => {
             Welcome Back!
           </Typography>
 
-          <Box 
-            component="form" 
+
+          <Box
+            component="form"
             onSubmit={handleLogin}
             sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
           >
@@ -158,31 +222,19 @@ const LoginPage = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              helperText="Enter your username or email address"
               sx={{
+                mb: 2,
                 '& .MuiOutlinedInput-root': {
-                  '& fieldset': {
-                    borderColor: 'rgba(218, 165, 32, 0.5)',
-                  },
-                  '&:hover fieldset': {
-                    borderColor: 'goldenrod',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: 'goldenrod',
-                  },
+                  '& fieldset': { borderColor: 'rgba(218, 165, 32, 0.5)' },
+                  '&:hover fieldset': { borderColor: 'goldenrod' },
+                  '&.Mui-focused fieldset': { borderColor: 'goldenrod' },
                 },
                 '& .MuiInputLabel-root': {
                   color: 'rgba(255, 255, 255, 0.7)',
-                  '&.Mui-focused': {
-                    color: 'goldenrod',
-                  },
+                  '&.Mui-focused': { color: 'goldenrod' },
                 },
-                '& .MuiInputBase-input': {
-                  color: 'white',
-                },
-                '& .MuiFormHelperText-root': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                },
+                '& .MuiInputBase-input': { color: 'white' },
+                '& .MuiFormHelperText-root': { color: 'rgba(255, 255, 255, 0.7)' },
               }}
             />
 
@@ -197,71 +249,126 @@ const LoginPage = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
               sx={{
+                mb: 2,
                 '& .MuiOutlinedInput-root': {
-                  '& fieldset': {
-                    borderColor: 'rgba(218, 165, 32, 0.5)',
-                  },
-                  '&:hover fieldset': {
-                    borderColor: 'goldenrod',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: 'goldenrod',
-                  },
+                  '& fieldset': { borderColor: 'rgba(218, 165, 32, 0.5)' },
+                  '&:hover fieldset': { borderColor: 'goldenrod' },
+                  '&.Mui-focused fieldset': { borderColor: 'goldenrod' },
                 },
                 '& .MuiInputLabel-root': {
                   color: 'rgba(255, 255, 255, 0.7)',
-                  '&.Mui-focused': {
-                    color: 'goldenrod',
-                  },
+                  '&.Mui-focused': { color: 'goldenrod' },
                 },
-                '& .MuiInputBase-input': {
-                  color: 'white',
-                },
+                '& .MuiInputBase-input': { color: 'white' },
               }}
             />
 
             {errorMessage && (
-              <Alert 
+              <Alert
                 severity="error"
-                sx={{ 
-                  mt: 2,
-                  backgroundColor: 'rgba(211, 47, 47, 0.1)',
-                  border: '1px solid rgba(211, 47, 47, 0.5)',
-                  color: '#fff',
-                  '& .MuiAlert-icon': {
-                    color: 'rgb(211, 47, 47)'
-                  },
-                  '& .MuiAlert-message': {
-                    color: '#fff'
-                  }
+                sx={{
+                  mt: 1.5,
+                  mb: 1.5,
+                  bgcolor: '#051426',
+                  border: '1px solid goldenrod',
+                  color: 'goldenrod',
+                  '.MuiAlert-icon': { display: 'none', color: 'goldenrod' },
+                  textAlign: 'center',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
-                {errorMessage}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+                  <Typography sx={{ color: 'goldenrod', textAlign: 'center' }}>{errorMessage}</Typography>
+
+                  {needsEmailVerification && (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={isResending}
+                      onClick={async () => {
+                        setIsResending(true);
+                        try {
+                          const res = await axiosInstance.post('/api/auth/resend-verification', { email: username });
+                          const sentTo = res.data.email || username;
+                          navigate('/auth/verify-email-sent', { state: { email: sentTo } });
+                        } catch (err) {
+                          alert('Failed to resend verification email. Please try again.');
+                        } finally {
+                          setIsResending(false);
+                        }
+                      }}
+                      sx={{
+                        mt: 1,
+                        background: 'linear-gradient(90deg, goldenrod, #FFD700)',
+                        color: '#051426',
+                        fontWeight: 'bold',
+                        border: '1px solid goldenrod',
+                        boxShadow: '0 0 8px rgba(218, 165, 32, 0.2)',
+                        alignSelf: 'center',
+                        '&:hover': {
+                          background: 'linear-gradient(90deg, #FFD700, goldenrod)',
+                          color: '#222',
+                          borderColor: '#FFD700',
+                          boxShadow: '0 0 12px rgba(218, 165, 32, 0.4)'
+                        }
+                      }}
+                    >
+                      {isResending ? (
+                        <>
+                          <CircularProgress size={18} color="inherit" sx={{ mr: 1 }} />
+                          Sending...
+                        </>
+                      ) : (
+                        'Verify Email Now'
+                      )}
+                    </Button>
+                  )}
+                </Box>
               </Alert>
             )}
 
-            <RecaptchaComponent ref={recaptchaRef} />
+            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', mb: 0}}>
+              <Box sx={{ width: { xs: '100%', sm: '80%', md: '70%' }, display: 'flex', justifyContent: 'center' }}>
+                <TurnstileComponent ref={recaptchaRef} />
+              </Box>
+            </Box>
 
             <Button
               type="submit"
               variant="contained"
               size="large"
-              disabled={isLoading}
-              sx={{ 
-                mt: 2, 
-                borderRadius: 2, 
+              disabled={isLoading || isRefreshing}
+              sx={{
+                mt: 1,
+                mb: 1,
+                borderRadius: 2,
                 color: '#FFFFFF',
                 border: '1px solid rgba(218, 165, 32, 0.5)',
                 backgroundColor: '#051426',
-                '&:hover': { 
+                width: '100%',
+                alignSelf: 'center',
+                fontWeight: 'bold',
+                fontSize: '1.1rem',
+                letterSpacing: '0.03em',
+                '&:hover': {
                   backgroundColor: '#051426',
                   border: '1px solid goldenrod',
                   boxShadow: '0 0 5px rgba(218, 165, 32, 0.5)'
-                } 
+                },
+                '&:disabled': {
+                  backgroundColor: 'rgba(5, 20, 38, 0.7)',
+                  color: 'rgba(255, 255, 255, 0.5)'
+                }
               }}
             >
               {isLoading ? (
                 <CircularProgress size={24} color="inherit" />
+              ) : isRefreshing ? (
+                <>
+                  <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
+                  Refreshing...
+                </>
               ) : (
                 'Login'
               )}
@@ -271,7 +378,7 @@ const LoginPage = () => {
               variant="text"
               size="large"
               onClick={() => navigate('/auth/register')}
-              sx={{ mt: 1 }}
+              sx={{ mt: 1, width: '100%', alignSelf: 'center', color: 'goldenrod', fontWeight: 'bold' }}
             >
               Don't have an account? Register here
             </Button>

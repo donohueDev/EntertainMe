@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
-import { verifyRecaptcha } from '../utils/verifyRecaptcha';
+import { verifyTurnstile } from '../utils/verifyRecaptcha';
 import { sendEmail } from '../utils/sendEmail';
 import { createVerificationEmailTemplate } from '../utils/emailTemplates';
 
@@ -54,7 +54,7 @@ export const authController = {
 
     try {
       // Verify reCAPTCHA token
-      const isValid = await verifyRecaptcha(recaptchaToken);
+      const isValid = await verifyTurnstile(recaptchaToken);
       if (!isValid) {
         return res.status(400).json({ message: 'Failed to verify you are human. Please try again.' });
       }
@@ -200,7 +200,7 @@ export const authController = {
 
     try {
       // Verify reCAPTCHA token
-      const isValid = await verifyRecaptcha(recaptchaToken);
+      const isValid = await verifyTurnstile(recaptchaToken);
       if (!isValid) {
         return res.status(400).json({ message: 'Failed to verify you are human. Please try again.' });
       }
@@ -219,8 +219,22 @@ export const authController = {
         return res.status(401).json({ message: 'Invalid username or password' });
       }
 
+            // Verify password
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: 'Invalid username or password' });
+      }
+
+
       // Check if email is verified
       if (!user.email_verified) {
+        console.log('Sending 403 to frontend with values:', {
+          message: 'Please verify your email before logging in',
+          requiresVerification: true,
+          user: {
+            email: user.email // Include email in response for verification flow
+          }
+        });
         return res.status(403).json({ 
           message: 'Please verify your email before logging in',
           requiresVerification: true,
@@ -228,12 +242,6 @@ export const authController = {
             email: user.email // Include email in response for verification flow
           }
         });
-      }
-
-      // Verify password
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: 'Invalid username or password' });
       }
 
       // Update login stats
@@ -282,5 +290,29 @@ export const authController = {
       userId: req.user?.id, 
       username: req.user?.username 
     });
+  },
+
+  checkVerificationStatus: async (req: Request, res: Response) => {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email: email as string }
+      });
+
+      // Return false if user doesn't exist (to prevent email enumeration)
+      if (!user) {
+        return res.status(200).json({ isVerified: false });
+      }
+
+      return res.status(200).json({ isVerified: user.email_verified });
+    } catch (error) {
+      console.error('Error checking verification status:', error);
+      return res.status(500).json({ message: 'Server error checking verification status' });
+    }
   }
 };

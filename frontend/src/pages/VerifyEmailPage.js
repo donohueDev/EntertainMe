@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Container, Box, Typography, Paper, Button, CircularProgress, Alert } from '@mui/material';
-import { Email as EmailIcon } from '@mui/icons-material';
+import { Container, Box, Typography, Paper, Button, CircularProgress, Alert, Grid } from '@mui/material';
+import { Email as EmailIcon, Home as HomeIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import axiosInstance from '../utils/axiosConfig';
 
 const VerifyEmailPage = () => {
@@ -22,16 +22,26 @@ const VerifyEmailPage = () => {
       
       setIsLoading(true);
       try {
-        const response = await axiosInstance.post('/api/accounts/verify-email', {
+        const response = await axiosInstance.post('/api/auth/verify-email', {
           token: verificationToken
         });
 
         if (response.status === 200) {
-          // Redirect to success page
+          // After successful verification, redirect to success page
           navigate('/auth/verify-email-success', { replace: true });
         }
       } catch (error) {
-        setError(error.message || 'Failed to verify email. Please try again.');
+        const errorMsg = error.response?.data?.message || '';
+        if (errorMsg.includes('expired')) {
+          setError('This verification link has expired. Please request a new one.');
+        } else if (errorMsg.includes('already verified')) {
+          navigate('/auth/login', {
+            replace: true,
+            state: { message: 'Email already verified. You can log in.' }
+          });
+        } else {
+          setError('Failed to verify email. Please try again.');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -50,7 +60,7 @@ const VerifyEmailPage = () => {
 
     setIsLoading(true);
     try {
-      await axiosInstance.post('/api/accounts/resend-verification', {
+      await axiosInstance.post('/api/auth/resend-verification', {
         email: email.trim() // Clean up email and ensure it's the actual email address
       });
 
@@ -67,6 +77,29 @@ const VerifyEmailPage = () => {
       });
     } catch (error) {
       setError(error.message || 'Failed to resend verification email. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCheckVerification = async () => {
+    if (!email) {
+      setError('Email address is missing. Please try again.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await axiosInstance.get(`/api/auth/verification-status?email=${encodeURIComponent(email)}`);
+      
+      if (response.data.isVerified) {
+        // After successful verification check, redirect to success page
+        navigate('/auth/verify-email-success', { replace: true });
+      } else {
+        setError('Email is not verified yet. Please check your inbox for the verification link.');
+      }
+    } catch (error) {
+      setError(error.message || 'Failed to check verification status. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -164,41 +197,86 @@ const VerifyEmailPage = () => {
             )}
           </Typography>
 
-          {email && showResend && (
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={handleResendVerification}
-              disabled={isLoading}
-              sx={{
-                mt: 2,
-                borderColor: 'goldenrod',
-                color: 'goldenrod',
-                '&:hover': {
-                  borderColor: 'darkgoldenrod',
-                  backgroundColor: 'rgba(218, 165, 32, 0.1)'
-                }
-              }}
-            >
-              Resend Verification Email
-            </Button>
-          )}
+          <Grid container spacing={2}>
+            {email && showResend && (
+              <Grid item xs={12}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleResendVerification}
+                  disabled={isLoading}
+                  startIcon={<EmailIcon />}
+                  sx={{
+                    borderColor: 'goldenrod',
+                    color: 'goldenrod',
+                    '&:hover': {
+                      borderColor: 'darkgoldenrod',
+                      backgroundColor: 'rgba(218, 165, 32, 0.1)'
+                    }
+                  }}
+                >
+                  Resend Verification Email
+                </Button>
+              </Grid>
+            )}
 
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={() => navigate('/account')}
-            sx={{
-              mt: 2,
-              backgroundColor: 'goldenrod',
-              color: '#051426',
-              '&:hover': {
-                backgroundColor: 'darkgoldenrod'
-              }
-            }}
-          >
-            Back to Login
-          </Button>
+            {email && (
+              <Grid item xs={12}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleCheckVerification}
+                  disabled={isLoading}
+                  startIcon={<RefreshIcon />}
+                  sx={{
+                    borderColor: 'goldenrod',
+                    color: 'goldenrod',
+                    '&:hover': {
+                      borderColor: 'darkgoldenrod',
+                      backgroundColor: 'rgba(218, 165, 32, 0.1)'
+                    }
+                  }}
+                >
+                  Check Verification Status
+                </Button>
+              </Grid>
+            )}
+
+            <Grid item xs={12} sm={6}>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={() => navigate('/auth/login', { replace: true })}
+                sx={{
+                  backgroundColor: 'goldenrod',
+                  color: '#051426',
+                  '&:hover': {
+                    backgroundColor: 'darkgoldenrod'
+                  }
+                }}
+              >
+                Back to Login
+              </Button>
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={() => navigate('/', { replace: true })}
+                startIcon={<HomeIcon />}
+                sx={{
+                  backgroundColor: 'goldenrod',
+                  color: '#051426',
+                  '&:hover': {
+                    backgroundColor: 'darkgoldenrod'
+                  }
+                }}
+              >
+                Go to Home
+              </Button>
+            </Grid>
+          </Grid>
         </Paper>
       </Box>
     </Container>

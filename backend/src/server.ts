@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import RAWGGamesRouter from './routes/games';
-import { accountRouter } from './routes/auth';
+import authRouter from './routes/auth';
 import userGames from './routes/userGames';
 import userAnime from './routes/userAnime';
 import animeRouter from './routes/anime';
@@ -98,7 +98,7 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // Set up the routes
 app.use('/api/games', RAWGGamesRouter);
 app.use('/api/userGames', userGames);
-app.use('/api/accounts', accountRouter);
+app.use('/api/auth', authRouter);
 app.use('/api/anime', animeRouter);
 app.use('/api/userAnimes', userAnime);
 app.use('/api/profile', profileRouter);

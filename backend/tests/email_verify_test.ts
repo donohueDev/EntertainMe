@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
-import app from '../src/test_server';
+import app from './test_server';
 import { sendEmail } from '../src/utils/sendEmail';
 // Jest types are available globally in test environment
 
@@ -9,9 +9,9 @@ jest.mock('../src/utils/sendEmail', () => ({
   sendEmail: jest.fn().mockResolvedValue(true)
 }));
 
-// Mock verifyRecaptcha utility to always return true in tests
+// Mock verifyTurnstile utility to always return true in tests
 jest.mock('../src/utils/verifyRecaptcha', () => ({
-  verifyRecaptcha: jest.fn().mockResolvedValue(true)
+  verifyTurnstile: jest.fn().mockResolvedValue(true)
 }));
 
 const prisma = new PrismaClient();

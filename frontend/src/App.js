@@ -240,41 +240,43 @@ const Navigation = () => {
   );
 };
 
-// Create a new component to handle routing
+// Refactored AppRoutes to separate auth and main app routes
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/game/:id" element={<GameDetailPage />} />
-      <Route path="/search" element={<SearchPage />} />
-      <Route path="/auth/register" element={<Register />} />
+      {/* Auth routes: no main layout */}
       <Route path="/auth/login" element={<LoginPage />} />
-      <Route path="/verify-email" element={<VerifyEmailPage />} />
-      <Route path="/auth/verify-email-sent" element={<VerifyEmailPage />} />
+      <Route path="/auth/register" element={<Register />} />
       <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/auth/verify-email-sent" element={<VerifyEmailPage />} />
       <Route path="/auth/verify-email-success" element={<VerificationSuccessPage />} />
-      <Route 
-        path="/user/:username/dashboard" 
+
+      {/* Main app routes: with main layout */}
+      <Route
+        path="*"
         element={
-          <ProtectedRoute>
-            <AccountDashboard />
-          </ProtectedRoute>
-        } 
+          <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <Navigation />
+            <Box component="main" sx={{ flexGrow: 1, pt: 8, pb: 7 }}>
+              <Container>
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/game/:id" element={<GameDetailPage />} />
+                  <Route path="/search" element={<SearchPage />} />
+                  <Route path="/user/:username/dashboard" element={<ProtectedRoute><AccountDashboard /></ProtectedRoute>} />
+                  <Route path="/user/:username/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                  <Route path="/anime/:slug" element={<AnimeDetailPage />} />
+                </Routes>
+              </Container>
+            </Box>
+          </Box>
+        }
       />
-      <Route 
-        path="/user/:username/profile" 
-        element={
-          <ProtectedRoute>
-            <ProfilePage />
-          </ProtectedRoute>
-        } 
-      />
-      <Route path="/anime/:slug" element={<AnimeDetailPage />} />
     </Routes>
   );
 };
 
-// Create a wrapper component to handle initialization
+// AppContent now just renders AppRoutes
 const AppContent = () => {
   const { isInitializing } = useUser();
 
@@ -287,16 +289,7 @@ const AppContent = () => {
     );
   }
 
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <Navigation />
-      <Box component="main" sx={{ flexGrow: 1, pt: 8, pb: 7 }}>
-        <Container>
-          <AppRoutes />
-        </Container>
-      </Box>
-    </Box>
-  );
+  return <AppRoutes />;
 };
 
 // Main App component

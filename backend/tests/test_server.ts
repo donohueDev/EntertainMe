@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { accountRouter } from './routes/auth';
+import authRouter from '../src/routes/auth';
 
 const app = express();
 
@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 // Set up the auth routes
-app.use('/api/auth', accountRouter);
+app.use('/api/auth', authRouter);
 
 // Export for testing
 export default app;

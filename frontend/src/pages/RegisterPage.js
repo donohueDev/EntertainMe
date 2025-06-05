@@ -4,7 +4,7 @@ import validator from 'validator';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/userContext';
 import axiosInstance from '../utils/axiosConfig';
-import RecaptchaComponent from '../components/Recaptcha';
+import TurnstileComponent from '../components/Recaptcha';
 import {
   Container,
   Box,
@@ -57,7 +57,7 @@ const RegisterPage = () => {
         throw new Error('Failed to verify you are human. Please try again.');
       }
 
-      const response = await axiosInstance.post('/api/accounts/register', {
+      const response = await axiosInstance.post('/api/auth/register', {
         email,
         username,
         password,
@@ -256,7 +256,7 @@ const RegisterPage = () => {
               </Alert>
             )}
 
-            <RecaptchaComponent ref={recaptchaRef} />
+            <TurnstileComponent ref={recaptchaRef} />
 
             <Button
               variant="contained"

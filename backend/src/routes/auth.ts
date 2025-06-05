@@ -9,8 +9,9 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/verify-email', authController.verifyEmail);
 router.post('/resend-verification', authController.resendVerification);
+router.get('/verification-status', authController.checkVerificationStatus);
 
 // Protected route to get current user
 router.get('/me', authenticateUser, authController.getCurrentUser);
 
-export { router as accountRouter };
+export default router;
