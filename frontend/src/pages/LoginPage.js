@@ -20,43 +20,15 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [requiresVerification, setRequiresVerification] = useState(false);
-  const [verificationEmail, setVerificationEmail] = useState('');
-  const [isResendingVerification, setIsResendingVerification] = useState(false);
-  const [verificationSuccess, setVerificationSuccess] = useState(false);
   const navigate = useNavigate();
   const { login } = useUser();
   const recaptchaRef = useRef(null);
-
-  const handleResendVerification = async () => {
-    if (!verificationEmail) return;
-    
-    setIsResendingVerification(true);
-    try {
-      await axiosInstance.post('/api/accounts/resend-verification', {
-        email: verificationEmail
-      });
-      setVerificationSuccess(true);
-      // Clear verification success message after 5 seconds
-      setTimeout(() => {
-        setVerificationSuccess(false);
-      }, 5000);
-    } catch (error) {
-      setErrorMessage(error?.message || 'Failed to resend verification email');
-    } finally {
-      setIsResendingVerification(false);
-    }
-  };
 
   const handleLogin = async (e) => {
     if (e) {
       e.preventDefault();
     }
-    // Clear previous error messages and verification states
     setErrorMessage('');
-    setRequiresVerification(false);
-    setVerificationEmail('');
-
     setIsLoading(true);
 
     try {
@@ -82,7 +54,7 @@ const LoginPage = () => {
       });
 
       if (response.data.token) {
-        // First store the token and update auth state
+        // Store the token and update auth state
         login(response.data.token);
         
         // Clear the input fields
@@ -101,24 +73,9 @@ const LoginPage = () => {
     } catch (error) {
       console.error('Login failed:', error);
       const responseData = error?.response?.data;
-      
-      // Special handling for 403 verification required error
-      if (error?.response?.status === 403) {
-        const message = responseData?.message || 'Please verify your email before logging in';
-        setRequiresVerification(true);
-        setVerificationEmail(responseData?.user?.email || username);
-        setErrorMessage(message);
-        
-        // If missing email but have username that looks like email, use it
-        if (!responseData?.user?.email && username.includes('@')) {
-          setVerificationEmail(username);
-        }
-      } else {
-        // Reset verification states for other errors
-        setRequiresVerification(false);
-        setVerificationEmail('');
-        setErrorMessage(responseData?.message || 'Login failed. Please check your credentials.');
-      }
+
+      // Handle other errors
+      setErrorMessage(responseData?.message || 'Login failed. Please check your credentials.');
     } finally {
       recaptchaRef.current?.reset();
       setIsLoading(false);
@@ -253,50 +210,21 @@ const LoginPage = () => {
 
             {errorMessage && (
               <Alert 
-                severity={requiresVerification ? "warning" : "error"}
+                severity="error"
                 sx={{ 
                   mt: 2,
-                  backgroundColor: requiresVerification ? 'rgba(237, 108, 2, 0.1)' : 'rgba(211, 47, 47, 0.1)',
-                  border: requiresVerification ? '1px solid rgba(237, 108, 2, 0.5)' : '1px solid rgba(211, 47, 47, 0.5)',
+                  backgroundColor: 'rgba(211, 47, 47, 0.1)',
+                  border: '1px solid rgba(211, 47, 47, 0.5)',
                   color: '#fff',
                   '& .MuiAlert-icon': {
-                    color: requiresVerification ? 'rgb(237, 108, 2)' : 'rgb(211, 47, 47)'
+                    color: 'rgb(211, 47, 47)'
                   },
                   '& .MuiAlert-message': {
                     color: '#fff'
                   }
                 }}
-                action={
-                  requiresVerification && verificationEmail && (
-                    <Button
-                      variant="contained"
-                      size="small"
-                      onClick={handleResendVerification}
-                      disabled={isResendingVerification}
-                      sx={{
-                        backgroundColor: 'rgb(237, 108, 2)',
-                        color: '#fff',
-                        '&:hover': {
-                          backgroundColor: 'rgb(255, 130, 20)'
-                        },
-                        '&:disabled': {
-                          backgroundColor: 'rgba(237, 108, 2, 0.3)',
-                          color: 'rgba(255, 255, 255, 0.3)'
-                        }
-                      }}
-                    >
-                      {isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
-                    </Button>
-                  )
-                }
               >
                 {errorMessage}
-              </Alert>
-            )}
-
-            {verificationSuccess && (
-              <Alert severity="success" sx={{ mt: 2 }}>
-                Verification email sent! Please check your inbox.
               </Alert>
             )}
 
