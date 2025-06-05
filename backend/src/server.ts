@@ -45,10 +45,17 @@ const allowedOrigins =
       ]
     : ['http://localhost:3000'];
 
+// Add support for Vercel preview URLs
+const isVercelPreview = (origin: string | undefined) => {
+  if (!origin) return false;
+  return origin.match(/https:\/\/.*--.*\.vercel\.app$/) !== null ||
+         origin.match(/https:\/\/.*-[a-z0-9]+-[a-z0-9]+\.vercel\.app$/) !== null;
+};
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin) || isVercelPreview(origin)) {
         return callback(null, true);
       }
       // Only log CORS errors in development

@@ -20,9 +20,33 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [requiresVerification, setRequiresVerification] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
   const navigate = useNavigate();
   const { login } = useUser();
   const recaptchaRef = useRef(null);
+
+  const handleResendVerification = async () => {
+    if (!verificationEmail) return;
+    
+    setIsResendingVerification(true);
+    try {
+      await axiosInstance.post('/api/accounts/resend-verification', {
+        email: verificationEmail
+      });
+      setVerificationSuccess(true);
+      // Clear verification success message after 5 seconds
+      setTimeout(() => {
+        setVerificationSuccess(false);
+      }, 5000);
+    } catch (error) {
+      setErrorMessage(error?.message || 'Failed to resend verification email');
+    } finally {
+      setIsResendingVerification(false);
+    }
+  };
 
   const handleLogin = async (e) => {
     if (e) {
@@ -64,15 +88,9 @@ const LoginPage = () => {
     } catch (error) {
       console.error('Login failed:', error);
       if (error.response?.data?.requiresVerification) {
-        // Handle unverified email case
-        navigate('/auth/verify-email-sent', {
-          replace: true,
-          state: {
-            email: error.response?.data?.user?.email, // Always use email from response
-            message: 'Please verify your email before logging in. Check your inbox for the verification link.',
-            showResend: true
-          }
-        });
+        setRequiresVerification(true);
+        setVerificationEmail(error.response?.data?.user?.email);
+        setErrorMessage('Please verify your email before logging in');
         return;
       }
       setErrorMessage(error?.message || 'Login failed. Please check your credentials.');
@@ -211,6 +229,31 @@ const LoginPage = () => {
             {errorMessage && (
               <Alert severity="error" sx={{ mt: 2 }}>
                 {errorMessage}
+                {requiresVerification && (
+                  <Box sx={{ mt: 1 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handleResendVerification}
+                      disabled={isResendingVerification}
+                      sx={{
+                        color: 'white',
+                        borderColor: 'rgba(255, 255, 255, 0.5)',
+                        '&:hover': {
+                          borderColor: 'white'
+                        }
+                      }}
+                    >
+                      {isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
+                    </Button>
+                  </Box>
+                )}
+              </Alert>
+            )}
+
+            {verificationSuccess && (
+              <Alert severity="success" sx={{ mt: 2 }}>
+                Verification email sent! Please check your inbox.
               </Alert>
             )}
 
