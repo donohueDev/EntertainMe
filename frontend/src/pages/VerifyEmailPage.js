@@ -43,15 +43,15 @@ const VerifyEmailPage = () => {
   }, [verificationToken, navigate]);
 
   const handleResendVerification = async () => {
-    if (!email) {
-      setError('Email address is missing. Please try again.');
+    if (!email || !email.includes('@')) {
+      setError('Valid email address is missing. Please try again.');
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await axiosInstance.post('/api/accounts/resend-verification', {
-        email
+      await axiosInstance.post('/api/accounts/resend-verification', {
+        email: email.trim() // Clean up email and ensure it's the actual email address
       });
 
       // Even if the email doesn't exist, we show success to prevent email enumeration

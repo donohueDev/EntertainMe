@@ -63,12 +63,12 @@ const LoginPage = () => {
       }
     } catch (error) {
       console.error('Login failed:', error);
-      if (error?.requiresVerification) {
+      if (error.response?.data?.requiresVerification) {
         // Handle unverified email case
         navigate('/auth/verify-email-sent', {
           replace: true,
           state: {
-            email: error.response?.data?.user?.email || username, // Use email from response if available
+            email: error.response?.data?.user?.email, // Always use email from response
             message: 'Please verify your email before logging in. Check your inbox for the verification link.',
             showResend: true
           }
