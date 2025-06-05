@@ -727,7 +727,7 @@ export const gamesController = {
         prisma.top50Games.deleteMany({}),
         prisma.top50Games.createMany({ data: topGameInserts })
       ]);
-      console.log('Inserted top 50 games into database');
+      console.log('Inserted top 100 games into database');
       res.status(200).json({ message: 'Top games updated successfully' });
     } catch (error) {
       console.error('Error updating top games:', error);

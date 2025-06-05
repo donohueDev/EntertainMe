@@ -5,8 +5,8 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: cd backend && npm install && ./scripts/run-with-env.sh npm run build
-    startCommand: cd backend && ./scripts/run-with-env.sh npm run migrate:safe && npm start
+    buildCommand: cd backend && npm install --production=false && npm run prisma:generate && npm run build
+    startCommand: cd backend && npm run migrate:safe && npm start
     envVars:
       - key: NODE_ENV
         value: production
