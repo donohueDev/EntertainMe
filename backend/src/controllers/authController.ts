@@ -223,7 +223,10 @@ export const authController = {
       if (!user.email_verified) {
         return res.status(403).json({ 
           message: 'Please verify your email before logging in',
-          requiresVerification: true 
+          requiresVerification: true,
+          user: {
+            email: user.email // Include email in response for verification flow
+          }
         });
       }
 

@@ -158,7 +158,10 @@ const VerifyEmailPage = () => {
               mb: 4
             }}
           >
-            {message || 'Please check your email for a verification link. The link will expire in 24 hours.'}
+            {message || (email 
+              ? `We've sent a verification email to ${email}. The link will expire in 24 hours.`
+              : 'Please check your email for a verification link. The link will expire in 24 hours.'
+            )}
           </Typography>
 
           {email && showResend && (

@@ -68,7 +68,7 @@ const LoginPage = () => {
         navigate('/auth/verify-email-sent', {
           replace: true,
           state: {
-            email: username,
+            email: error.response?.data?.user?.email || username, // Use email from response if available
             message: 'Please verify your email before logging in. Check your inbox for the verification link.',
             showResend: true
           }
