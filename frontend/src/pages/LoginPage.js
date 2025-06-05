@@ -57,9 +57,18 @@ const LoginPage = () => {
 
     try {
       // Execute reCAPTCHA and get token
-      const recaptchaToken = await recaptchaRef.current?.executeAsync();
+      let recaptchaToken;
+      try {
+        recaptchaToken = await recaptchaRef.current?.executeAsync();
+      } catch (recaptchaError) {
+        console.error('reCAPTCHA error:', recaptchaError);
+        setErrorMessage('Failed to verify you are human. Please refresh the page and try again.');
+        return;
+      }
+      
       if (!recaptchaToken) {
-        throw new Error('Failed to verify you are human. Please try again.');
+        setErrorMessage('Failed to verify you are human. Please refresh the page and try again.');
+        return;
       }
 
       const response = await axiosInstance.post('/api/accounts/login', {
@@ -89,10 +98,17 @@ const LoginPage = () => {
       console.error('Login failed:', error);
       const responseData = error?.response?.data;
       
-      if (error?.response?.status === 403 && responseData?.requiresVerification) {
+      // Special handling for 403 verification required error
+      if (error?.response?.status === 403) {
+        const message = responseData?.message || 'Please verify your email before logging in';
         setRequiresVerification(true);
-        setVerificationEmail(responseData?.user?.email || '');
-        setErrorMessage(responseData?.message || 'Please verify your email before logging in');
+        setVerificationEmail(responseData?.user?.email || username);
+        setErrorMessage(message);
+        
+        // If missing email but have username that looks like email, use it
+        if (!responseData?.user?.email && username.includes('@')) {
+          setVerificationEmail(username);
+        }
       } else {
         // Reset verification states for other errors
         setRequiresVerification(false);
@@ -233,32 +249,35 @@ const LoginPage = () => {
 
             {errorMessage && (
               <Alert 
-                severity="error" 
+                severity={requiresVerification ? "warning" : "error"}
                 sx={{ 
                   mt: 2,
-                  border: '1px solid rgba(211, 47, 47, 0.5)',
+                  backgroundColor: requiresVerification ? 'rgba(237, 108, 2, 0.1)' : 'rgba(211, 47, 47, 0.1)',
+                  border: requiresVerification ? '1px solid rgba(237, 108, 2, 0.5)' : '1px solid rgba(211, 47, 47, 0.5)',
+                  color: '#fff',
+                  '& .MuiAlert-icon': {
+                    color: requiresVerification ? 'rgb(237, 108, 2)' : 'rgb(211, 47, 47)'
+                  },
                   '& .MuiAlert-message': {
                     color: '#fff'
                   }
                 }}
                 action={
-                  requiresVerification && (
+                  requiresVerification && verificationEmail && (
                     <Button
-                      variant="outlined"
+                      variant="contained"
                       size="small"
                       onClick={handleResendVerification}
                       disabled={isResendingVerification}
                       sx={{
-                        backgroundColor: 'rgba(211, 47, 47, 0.1)',
+                        backgroundColor: 'rgb(237, 108, 2)',
                         color: '#fff',
-                        borderColor: 'rgba(255, 255, 255, 0.5)',
                         '&:hover': {
-                          backgroundColor: 'rgba(211, 47, 47, 0.2)',
-                          borderColor: '#fff'
+                          backgroundColor: 'rgb(255, 130, 20)'
                         },
                         '&:disabled': {
-                          color: 'rgba(255, 255, 255, 0.3)',
-                          borderColor: 'rgba(255, 255, 255, 0.3)'
+                          backgroundColor: 'rgba(237, 108, 2, 0.3)',
+                          color: 'rgba(255, 255, 255, 0.3)'
                         }
                       }}
                     >
