@@ -35,15 +35,17 @@ const LoginPage = () => {
     const savedUsername = sessionStorage.getItem('loginUsername');
     const savedError = sessionStorage.getItem('loginError');
     const savedVerificationNeeded = sessionStorage.getItem('loginNeedsVerification');
+    const savedVerificationEmail = sessionStorage.getItem('loginVerificationEmail');
     
     console.log('LoginPage restored state:', {
       savedUsername,
       savedError,
-      savedVerificationNeeded
+      savedVerificationNeeded,
+      savedVerificationEmail
     });
     
     // Only process if we have values to restore
-    if (savedUsername || savedError || savedVerificationNeeded) {
+    if (savedUsername || savedError || savedVerificationNeeded || savedVerificationEmail) {
       hasRestoredState.current = true;
       
       if (savedUsername) {
@@ -63,6 +65,7 @@ const LoginPage = () => {
       sessionStorage.removeItem('loginUsername');
       sessionStorage.removeItem('loginError');
       sessionStorage.removeItem('loginNeedsVerification');
+      sessionStorage.removeItem('loginVerificationEmail');
     }
   }, []);
 
@@ -121,11 +124,13 @@ const LoginPage = () => {
       if (isEmailVerificationError) {
         // For email verification errors, store state and reload page
         const errorMsg = error?.response?.data?.message || 'Please verify your email before logging in';
+        const actualEmail = error?.response?.data?.user?.email || username;
         
         console.log('Storing email verification error, will reload page');
         sessionStorage.setItem('loginUsername', username);
         sessionStorage.setItem('loginError', errorMsg);
         sessionStorage.setItem('loginNeedsVerification', 'true');
+        sessionStorage.setItem('loginVerificationEmail', actualEmail);
         
         // Show loading state while refreshing
         setIsRefreshing(true);
@@ -289,7 +294,8 @@ const LoginPage = () => {
                       onClick={async () => {
                         setIsResending(true);
                         try {
-                          const res = await axiosInstance.post('/api/auth/resend-verification', { email: username });
+                          const emailToSend = savedVerificationEmail || username;
+                          const res = await axiosInstance.post('/api/auth/resend-verification', { email: emailToSend });
                           const sentTo = res.data.email || username;
                           navigate('/auth/verify-email-sent', { state: { email: sentTo } });
                         } catch (err) {
