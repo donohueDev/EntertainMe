@@ -294,7 +294,9 @@ const LoginPage = () => {
                       onClick={async () => {
                         setIsResending(true);
                         try {
-                          const emailToSend = savedVerificationEmail || username;
+                          // Retrieve verification email from sessionStorage or fallback to username
+                          const storedVerificationEmail = sessionStorage.getItem('loginVerificationEmail');
+                          const emailToSend = storedVerificationEmail || username;
                           const res = await axiosInstance.post('/api/auth/resend-verification', { email: emailToSend });
                           const sentTo = res.data.email || username;
                           navigate('/auth/verify-email-sent', { state: { email: sentTo } });
