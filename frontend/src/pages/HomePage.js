@@ -517,7 +517,7 @@ const HomePage = () => {
             }
           }}
         >
-          Welcome to EntertainME{isAuthenticated ? `, ${userInfo.username}!` : '!'}
+          Welcome{isAuthenticated ? `, ${userInfo.username}!` : '!'}
         </Typography>
         
         <Typography 

@@ -1,5 +1,5 @@
 // RegisterPage component for user registration
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import validator from 'validator';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/userContext';
@@ -22,9 +22,28 @@ const RegisterPage = () => {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
   const { login } = useUser();
   const recaptchaRef = useRef(null);
+  const hasRestoredState = useRef(false);
+
+  // Restore state after page reload (for remount-to-refresh logic)
+  useEffect(() => {
+    if (hasRestoredState.current) return;
+    const savedEmail = sessionStorage.getItem('registerEmail');
+    const savedUsername = sessionStorage.getItem('registerUsername');
+    const savedError = sessionStorage.getItem('registerError');
+    if (savedEmail || savedUsername || savedError) {
+      hasRestoredState.current = true;
+      if (savedEmail) setEmail(savedEmail);
+      if (savedUsername) setUsername(savedUsername);
+      if (savedError) setErrorMessage(savedError);
+      sessionStorage.removeItem('registerEmail');
+      sessionStorage.removeItem('registerUsername');
+      sessionStorage.removeItem('registerError');
+    }
+  }, []);
 
   const handleRegister = async () => {
     if (!email || !username || !password) {
@@ -54,7 +73,17 @@ const RegisterPage = () => {
       // Execute reCAPTCHA and get token
       const recaptchaToken = await recaptchaRef.current?.executeAsync();
       if (!recaptchaToken) {
-        throw new Error('Failed to verify you are human. Please try again.');
+        setErrorMessage('Failed to verify you are human. Please try again.');
+        setIsLoading(false);
+        // Store state and reload for remount-to-refresh
+        sessionStorage.setItem('registerEmail', email);
+        sessionStorage.setItem('registerUsername', username);
+        sessionStorage.setItem('registerError', 'Failed to verify you are human. Please try again.');
+        setIsRefreshing(true);
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+        return;
       }
 
       const response = await axiosInstance.post('/api/auth/register', {
@@ -79,8 +108,16 @@ const RegisterPage = () => {
       });
     } catch (error) {
       console.error('Registration failed:', error);
-      setErrorMessage(error.message || 'Registration failed. Please try again.');
-      recaptchaRef.current?.reset();
+      const errorMsg = error.message || 'Registration failed. Please try again.';
+      setErrorMessage(errorMsg);
+      // Store state for after reload
+      sessionStorage.setItem('registerEmail', email);
+      sessionStorage.setItem('registerUsername', username);
+      sessionStorage.setItem('registerError', errorMsg);
+      setIsRefreshing(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } finally {
       setIsLoading(false);
     }
@@ -262,7 +299,7 @@ const RegisterPage = () => {
               variant="contained"
               size="large"
               onClick={handleRegister}
-              disabled={isLoading}
+              disabled={isLoading || isRefreshing}
               sx={{ 
                 mt: 2, 
                 borderRadius: 2, 
@@ -278,6 +315,11 @@ const RegisterPage = () => {
             >
               {isLoading ? (
                 <CircularProgress size={24} color="inherit" />
+              ) : isRefreshing ? (
+                <>
+                  <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
+                  Refreshing...
+                </>
               ) : (
                 'Register'
               )}
