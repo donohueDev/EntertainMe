@@ -1,24 +1,25 @@
 import React, { useState, useEffect } from 'react';
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Checkbox, FormControlLabel, Typography, Alert, InputAdornment, IconButton } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../context/userContext';
 import axios from 'axios';
+import isValidPassword from '../utils/isValidPassword';
 import API_BASE_URL from '../config';
 import {
   Container,
   Box,
-  TextField,
-  Button,
-  Typography,
   Paper,
-  Alert,
   CircularProgress,
   Avatar,
 } from '@mui/material';
+import LockIcon from '@mui/icons-material/Lock';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 const ProfilePage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { getUserInfo } = useUser();
+  const { getUserInfo, updateUserInfo } = useUser();
   const isNewUser = location.state?.isNewUser;
 
   const [profile, setProfile] = useState({
@@ -32,6 +33,18 @@ const ProfilePage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // State for password dialog
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  // const [logoutOtherDevices, setLogoutOtherDevices] = useState(true);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -68,17 +81,39 @@ const ProfilePage = () => {
 
     try {
       const userInfo = getUserInfo();
-      await axios.patch(
-        `${API_BASE_URL}/api/profile`,
-        profile,
-        {
-          headers: {
-            'Authorization': `Bearer ${userInfo.token}`
-          }
-        }
+
+      // Only include the editable profile fields
+      const editableFields = ['display_name', 'avatar_url', 'bio', 'location', 'website'];
+      const filteredProfile = Object.fromEntries(
+        Object.entries(profile)
+          .filter(([key, value]) => editableFields.includes(key) && value !== undefined)
+          .map(([k, v]) => {
+            // Convert empty strings to null for URL fields
+            if ((k === 'avatar_url' || k === 'website') && v === '') {
+              return [k, null];
+            }
+            return [k, v === '' ? null : v];
+          })
       );
 
+      console.log('Raw avatar_url value:', profile.avatar_url);
+      console.log('Filtered profile data:', filteredProfile);
+
+      const response = await axios.patch(
+        `${API_BASE_URL}/api/profile`,
+        filteredProfile,
+        { headers: { 'Authorization': `Bearer ${userInfo.token}` } }
+      );
+
+      console.log('Profile update response:', response.data);
       setSuccessMessage('Profile updated successfully');
+      
+      // Update the user context with the new token and user info
+      localStorage.setItem('token', response.data.token);
+      updateUserInfo({
+        display_name: response.data.display_name,
+        avatar_url: response.data.avatar_url
+      });
       
       // If this is a new user, redirect to dashboard after profile setup
       if (isNewUser) {
@@ -87,10 +122,54 @@ const ProfilePage = () => {
         }, 1500);
       }
     } catch (error) {
-      setErrorMessage(error.response?.data?.message || 'Failed to update profile');
-      console.error('Error updating profile:', error);
+      console.error('Full error object:', error);
+      console.error('Error response data:', error.response?.data);
+      
+      // Handle validation errors
+      if (error.response?.data?.errors) {
+        const errorMessages = error.response.data.errors.map(err => err.message).join(', ');
+        setErrorMessage(errorMessages);
+      } else {
+        setErrorMessage(
+          error.response?.data?.message || 
+          'Failed to update profile'
+        );
+      }
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    setPasswordError('');
+    setPasswordSuccess('');
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+    if (!isValidPassword(newPassword)) {
+      setPasswordError("New password must be at least 6 characters long and include letters, numbers, and special characters (!@$%).");
+      return;
+    }
+    if (currentPassword === newPassword) {
+      setPasswordError("New password cannot be the same as the current password.");
+      return;
+    }
+    try {
+      await axios.post(`${API_BASE_URL}/api/auth/change-password`, {
+        currentPassword,
+        newPassword,
+        // logoutOtherDevices,
+      }, {
+        headers: { Authorization: `Bearer ${getUserInfo().token}` }
+      });
+      setPasswordSuccess("Password changed successfully.");
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setPasswordDialogOpen(false), 5000);
+    } catch (err) {
+      setPasswordError(err.response?.data?.message || "Failed to change password.");
     }
   };
 
@@ -154,6 +233,34 @@ const ProfilePage = () => {
                 }}
               />
             </Box>
+
+            <TextField
+              label="Username"
+              value={getUserInfo()?.username || ''}
+              fullWidth
+              disabled
+              variant="outlined"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockIcon sx={{ color: 'rgba(218, 165, 32, 0.7)' }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: 'rgba(218, 165, 32, 0.5)' },
+                  '&:hover fieldset': { borderColor: 'goldenrod' },
+                  '&.Mui-focused fieldset': { borderColor: 'goldenrod' },
+                  '&.Mui-disabled': {
+                    '& fieldset': { borderColor: 'rgba(218, 165, 32, 0.3)' },
+                    '& input': { color: 'rgba(255, 255, 255, 0.7)' }
+                  }
+                },
+                '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
+                '& .MuiOutlinedInput-input': { color: '#FFFFFF' }
+              }}
+            />
 
             <TextField
               label="Display Name"
@@ -289,6 +396,126 @@ const ProfilePage = () => {
               </Button>
             )}
           </Box>
+
+          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 2 }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={() => setPasswordDialogOpen(true)}
+              sx={{ 
+                borderColor: 'rgba(218, 165, 32, 0.5)',
+                color: 'rgba(218, 165, 32, 0.8)',
+                '&:hover': {
+                  borderColor: 'goldenrod',
+                  color: 'goldenrod',
+                  backgroundColor: 'rgba(218, 165, 32, 0.1)'
+                }
+              }}
+            >
+              Change Password
+            </Button>
+          </Box>
+
+          <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)} maxWidth="xs" fullWidth>
+            <DialogTitle>
+              <Typography sx={{ fontWeight: 'bold' }}>
+                Change password
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
+                Your password must be at least 6 characters and should include a combination of numbers, letters and special characters (!@$%).
+              </Typography>
+            </DialogTitle>
+            <DialogContent>
+              {passwordError && <Alert severity="error" sx={{ mb: 2 }}>{passwordError}</Alert>}
+              {passwordSuccess && <Alert severity="success" sx={{ mb: 2 }}>{passwordSuccess}</Alert>}
+              <TextField
+                label="Current password"
+                type={showCurrentPassword ? 'text' : 'password'}
+                fullWidth
+                margin="normal"
+                value={currentPassword}
+                onChange={e => setCurrentPassword(e.target.value)}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        edge="end"
+                        sx={{ color: 'rgba(218, 165, 32, 0.7)' }}
+                      >
+                        {showCurrentPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
+                label="New password"
+                type={showNewPassword ? 'text' : 'password'}
+                fullWidth
+                margin="normal"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        edge="end"
+                        sx={{ color: 'rgba(218, 165, 32, 0.7)' }}
+                      >
+                        {showNewPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
+                label="Re-type new password"
+                type={showConfirmPassword ? 'text' : 'password'}
+                fullWidth
+                margin="normal"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        edge="end"
+                        sx={{ color: 'rgba(218, 165, 32, 0.7)' }}
+                      >
+                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              {/* <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={logoutOtherDevices}
+                    onChange={e => setLogoutOtherDevices(e.target.checked)}
+                  />
+                }
+                label="Log out of other devices. Choose this if someone else used your account."
+                sx={{ mt: 1 }}
+              /> */}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setPasswordDialogOpen(false)} sx={{ color: 'goldenrod' }}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handlePasswordChange}
+                variant="contained"
+                color="primary"
+                disabled={!currentPassword || !newPassword || !confirmPassword}
+              >
+                Change password
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Paper>
       </Box>
     </Container>

@@ -14,6 +14,9 @@ router.get('/', async (req, res) => {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
+        // Start the update process
+        const startTime = Date.now();
+        
         try {
             // Update top games
             await cronController.updateTopGamesInternal();
@@ -30,16 +33,23 @@ router.get('/', async (req, res) => {
                 console.log('Top anime update completed');
             }
 
+            const duration = Date.now() - startTime;
             return res.status(200).json({ 
                 success: true, 
-                message: 'Successfully updated top games and anime' 
+                message: 'Successfully updated top games and anime',
+                duration: `${duration}ms`
             });
         } catch (error) {
+            const duration = Date.now() - startTime;
             console.error('Cron job execution failed:', {
                 error: error instanceof Error ? error.message : 'Unknown error',
+                duration: `${duration}ms`,
                 timestamp: new Date().toISOString()
             });
-            return res.status(500).json({ error: 'Failed to update top content' });
+            return res.status(500).json({ 
+                error: 'Failed to update top content',
+                duration: `${duration}ms`
+            });
         }
     } catch (error) {
         console.error('Cron job request handling failed:', {
@@ -59,6 +69,7 @@ router.post('/test', async (req, res) => {
 
     try {
         console.log('Starting test cron job execution...');
+        const startTime = Date.now();
         
         try {
             // Update top games
@@ -72,16 +83,23 @@ router.post('/test', async (req, res) => {
             await cronController.updateTopAnimeInternal();
             console.log('Test: Top anime update completed');
             
+            const duration = Date.now() - startTime;
             return res.status(200).json({ 
                 success: true, 
-                message: 'Test cron job completed successfully' 
+                message: 'Test cron job completed successfully',
+                duration: `${duration}ms`
             });
         } catch (error) {
+            const duration = Date.now() - startTime;
             console.error('Test cron job execution failed:', {
                 error: error instanceof Error ? error.message : 'Unknown error',
+                duration: `${duration}ms`,
                 timestamp: new Date().toISOString()
             });
-            return res.status(500).json({ error: 'Failed to update top content' });
+            return res.status(500).json({ 
+                error: 'Failed to update top content',
+                duration: `${duration}ms`
+            });
         }
     } catch (error) {
         console.error('Test cron job request handling failed:', {

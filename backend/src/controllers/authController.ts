@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import crypto from 'crypto';
 import { verifyTurnstile } from '../utils/verifyRecaptcha';
 import { sendEmail } from '../utils/sendEmail';
-import { createVerificationEmailTemplate } from '../utils/emailTemplates';
+import { createVerificationEmailTemplate, createPasswordResetEmailTemplate } from '../utils/emailTemplates';
 
 dotenv.config();
 
@@ -39,12 +39,19 @@ interface LoginRequest {
 interface JwtPayload {
   userId: number;
   username: string;
+  display_name?: string | null;
 }
 
 interface VerifyEmailRequest {
   token: string;
 }
 
+
+interface ResetPasswordRequest {
+  email: string;
+  newPassword: string;
+  recaptchaToken: string;
+}
 
 
 
@@ -260,7 +267,9 @@ export const authController = {
       const token = jwt.sign(
         { 
           userId: user.id, 
-          username: user.username 
+          username: user.username,
+          display_name: user.display_name,
+          avatar_url: user.avatar_url
         },
         JWT_SECRET,
         { expiresIn: '7d' }
@@ -314,5 +323,134 @@ export const authController = {
       console.error('Error checking verification status:', error);
       return res.status(500).json({ message: 'Server error checking verification status' });
     }
+  },
+  changePassword: async (req: Request, res: Response) => {
+    // Get userId from req.user (set by authenticateUser middleware)
+    const userId = req.user?.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    try {
+      // Find user by ID
+      const user = await prisma.user.findUnique({
+        where: { id: userId }
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Check current password
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Current password is incorrect.' });
+      }
+
+      // Hash new password
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+      // Update password in DB
+      await prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword }
+      });
+
+      // TODO: add logic to invalidate any existing sessions or tokens
+
+      return res.status(200).json({ message: 'Password changed successfully.' });
+    } catch (error) {
+      console.error('Error changing password:', error);
+      return res.status(500).json({ message: 'Server error changing password' });
+    }
+  },
+  forgotPassword: async (req: Request, res: Response) => {
+    const { email, recaptchaToken } = req.body;
+
+    try {
+      // Verify reCAPTCHA token
+      const isValid = await verifyTurnstile(recaptchaToken);
+      if (!isValid) {
+        return res.status(400).json({ message: 'Failed to verify you are human. Please try again.' });
+      }
+      // Find user by email
+      const user = await prisma.user.findUnique({
+        where: { email }
+      });
+      if (!user) {
+        // Return success even if email doesn't exist to prevent email enumeration
+        return res.status(200).json({ message: 'If an account with that email exists, a password reset link has been sent.' });
+      }
+      // Generate password reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenExpires = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
+      // Update user with reset token
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          reset_token: resetToken,
+          reset_token_expires: resetTokenExpires
+        }
+      });
+      // Send password reset email
+      const emailTemplate = createPasswordResetEmailTemplate(user.username, resetToken, FRONTEND_URL);
+      await sendEmail({
+        to: email,
+        ...emailTemplate
+      });
+      return res.status(200).json({ message: 'If an account with that email exists, a password reset link has been sent.' });
+    } catch (error) {
+      console.error('Error sending password reset email:', error);
+      return res.status(500).json({ message: 'Server error sending password reset email' });
+    }
+  },
+
+  verifyPasswordReset: async (req: Request, res: Response) => {
+    const { token, newPassword, recaptchaToken } = req.body;
+
+    try {
+      // Verify reCAPTCHA token
+      const isValid = await verifyTurnstile(recaptchaToken);
+      if (!isValid) {
+        return res.status(400).json({ message: 'Failed to verify you are human. Please try again.' });
+      }
+
+      // Find user with matching reset token that hasn't expired
+      const user = await prisma.user.findFirst({
+        where: {
+          reset_token: token,
+          reset_token_expires: {
+            gte: new Date() // Token hasn't expired
+          }
+        }
+      });
+
+      if (!user) {
+        return res.status(400).json({ message: 'Invalid or expired reset token. Please request a new password reset link.' });
+      }
+
+      // Hash new password
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+      // Update user's password and clear reset token
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashedPassword,
+          reset_token: null,
+          reset_token_expires: null
+        }
+      });
+
+      return res.status(200).json({ message: 'Password reset successful' });
+    } catch (error) {
+      console.error('Error verifying password reset:', error);
+      return res.status(500).json({ message: 'Server error verifying password reset' });
+    }
   }
+
 };

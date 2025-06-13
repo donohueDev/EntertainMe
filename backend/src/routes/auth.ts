@@ -10,8 +10,11 @@ router.post('/login', authController.login);
 router.post('/verify-email', authController.verifyEmail);
 router.post('/resend-verification', authController.resendVerification);
 router.get('/verification-status', authController.checkVerificationStatus);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/verify-password-reset', authController.verifyPasswordReset);
 
 // Protected route to get current user
 router.get('/me', authenticateUser, authController.getCurrentUser);
+router.post('/change-password', authenticateUser, authController.changePassword);
 
 export default router;

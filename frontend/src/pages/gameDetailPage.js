@@ -1,6 +1,6 @@
 // gameDetailPage.js is used to display game details to user
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import API_BASE_URL from '../config';
 import { useUser } from '../context/userContext';
 import {
@@ -13,9 +13,11 @@ import {
   Alert,
   CircularProgress,
   Grid,
-  Snackbar
+  Snackbar,
+  IconButton
 } from '@mui/material';
 import Tooltip from '@mui/material/Tooltip';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReviewBox from '../components/ReviewBox';
 import useFetchDetails from '../hooks/useFetchDetails';
 import useUserContentRating from '../hooks/useUserContentRating';
@@ -35,6 +37,7 @@ const formatDate = (dateString) => {
 // GameDetailPage component for displaying detailed game information
 const GameDetailPage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const initialGame = location.state?.game;
   const [success, setSuccess] = useState(false);
   const { isAuthenticated } = useUser();
@@ -105,11 +108,45 @@ const GameDetailPage = () => {
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Card sx={{ 
+        borderRadius: 2,
+        boxShadow: 'none',
+        background: 'rgba(20, 24, 36, 0.98)',
+        border: 'none',
         '&:hover': {
           transform: 'none',
           boxShadow: 'none'
         }
       }}>
+        {/* Title Section */}
+        <Box
+          sx={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            p: 3,
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+          }}
+        >
+          <Tooltip title="Go back to previous page" arrow placement="bottom">
+            <IconButton
+              onClick={() => navigate(-1)}
+              sx={{
+                color: 'white',
+                '&:hover': {
+                  color: 'goldenrod',
+                  backgroundColor: 'rgba(218, 165, 32, 0.1)'
+                }
+              }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+          </Tooltip>
+          <Typography variant="h4" component="h1" sx={{ color: 'white', fontWeight: 'bold' }}>
+            {game.name}
+          </Typography>
+        </Box>
+
         <CardMedia
           component="img"
           height="400"
@@ -118,10 +155,6 @@ const GameDetailPage = () => {
           sx={{ objectFit: 'cover' }}
         />
         <CardContent>
-          <Typography variant="h4" component="h1" gutterBottom>
-            {game.name}
-          </Typography>
-
           {/* Game Details Section */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="subtitle1" sx={{ color: 'text.secondary', mb: 2, fontSize: '1.2rem', fontWeight: 500 }}>

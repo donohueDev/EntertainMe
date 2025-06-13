@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/userContext';
 import axiosInstance from '../utils/axiosConfig';
 import TurnstileComponent from '../components/Recaptcha';
+import isValidPassword from '../utils/isValidPassword';
 import {
   Container,
   Box,
@@ -61,7 +62,7 @@ const RegisterPage = () => {
       return;
     }
 
-    if(password.length < 6){
+    if(!isValidPassword(password)){
       setErrorMessage("Please enter a valid password.");
       return;
     }
@@ -146,7 +147,7 @@ const RegisterPage = () => {
           }}
         >
           <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ 
-            mb: 4, 
+            mb: 6, 
             color: 'white',
             fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
             fontWeight: 'bold',
@@ -259,7 +260,7 @@ const RegisterPage = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              helperText="Minimum 6 characters"
+              helperText="Minimum 6 characters: must include letters, numbers, and special character (!@$%)."
               sx={{
                 '& .MuiOutlinedInput-root': {
                   '& fieldset': {
@@ -284,6 +285,7 @@ const RegisterPage = () => {
                 '& .MuiFormHelperText-root': {
                   color: 'rgba(255, 255, 255, 0.7)',
                 },
+                mb: -2
               }}
             />
 
@@ -301,7 +303,7 @@ const RegisterPage = () => {
               onClick={handleRegister}
               disabled={isLoading || isRefreshing}
               sx={{ 
-                mt: 2, 
+                mt: -2, 
                 borderRadius: 2, 
                 color: '#FFFFFF',
                 border: '1px solid rgba(218, 165, 32, 0.5)',
@@ -329,7 +331,7 @@ const RegisterPage = () => {
               variant="text"
               size="large"
               onClick={() => navigate('/auth/login')}
-              sx={{ mt: 1 }}
+              sx={{ mt: -2 }}
             >
               Already have an account? Log in.
             </Button>

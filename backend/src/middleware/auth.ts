@@ -21,6 +21,7 @@ declare global {
       user?: {
         id: number;
         username: string;
+        display_name?: string | null;
       };
     }
   }
@@ -39,7 +40,7 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, username: true }
+      select: { id: true, username: true, display_name: true }
     });
 
     if (!user) {

@@ -41,3 +41,48 @@ export const createVerificationEmailTemplate = (username: string, verificationTo
     `
   };
 };
+
+
+export const createPasswordResetEmailTemplate = (username: string, resetToken: string, frontendUrl: string) => {
+  const resetLink = `${frontendUrl}/auth/reset-password?token=${resetToken}`;
+  
+  return {
+    subject: 'Reset Your Password - EntertainMe',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Reset Your Password</h2>
+        <p>Hi ${username},</p>
+        <p>You requested a password reset. Please click the button below to reset your password:</p>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="${resetLink}" 
+             style="background-color: #051426; color: white; padding: 12px 24px; 
+                    text-decoration: none; border-radius: 4px; border: 1px solid goldenrod;">
+            Reset Your Password
+          </a>
+        </div>
+        <p>Or copy and paste this link in your browser:</p>
+        <p>${resetLink}</p>
+        <p>This reset link will expire in 1 hour.</p>
+        <p>If you didn't request a password reset, you can safely ignore this email.</p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="color: #666; font-size: 12px;">This is an automated message. Please do not reply to this email. For support, please visit our website.</p>
+      </div>
+    `,
+    text: `
+      Reset Your Password
+
+      Hi ${username},
+
+      You requested a password reset. Please click the link below to reset your password:
+
+      ${resetLink}
+
+      This reset link will expire in 1 hour.
+
+      If you didn't request a password reset, you can safely ignore this email.
+
+      -------------------------------------------------------
+      This is an automated message. Please do not reply to this email. For support, please visit our website.
+    `
+  };
+};

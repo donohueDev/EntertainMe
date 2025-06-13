@@ -8,9 +8,7 @@
   },
   "scripts": {
     "migrate:deploy": "prisma migrate deploy",
-    "migrate:fix": "ts-node src/db/fixMigrations.ts",
-    "migrate:safe": "npm run migrate:fix && npm run migrate:deploy",
-    "start": "npm run migrate:safe && node dist/server.js",
+    "start": "npm run migrate:deploy && node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "rm -rf dist && prisma generate && tsc -p tsconfig.build.json",
     "test": "jest",

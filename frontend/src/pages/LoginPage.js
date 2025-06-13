@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/userContext';
 import axiosInstance from '../utils/axiosConfig';
 import TurnstileComponent from '../components/Recaptcha';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import {
   Container,
   Box,
@@ -11,12 +13,16 @@ import {
   Typography,
   Paper,
   Alert,
-  CircularProgress
+  CircularProgress, 
+  IconButton,
+  InputAdornment
 } from '@mui/material';
+
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -96,7 +102,7 @@ const LoginPage = () => {
       });
 
       if (response.data.token) {
-        login(response.data.token);
+        login(response.data.token, response.data.user);
         setUsername('');
         setPassword('');
         const userInfo = JSON.parse(atob(response.data.token.split('.')[1]));
@@ -185,7 +191,7 @@ const LoginPage = () => {
           }}
         >
           <Typography variant="h3" component="h1" gutterBottom align="center" sx={{
-            mb: 4,
+            mb: 6,
             color: 'white',
             fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
             fontWeight: 'bold',
@@ -249,12 +255,12 @@ const LoginPage = () => {
               name="password"
               label="Password"
               variant="outlined"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               sx={{
-                mb: 2,
+                mb: 0,
                 '& .MuiOutlinedInput-root': {
                   '& fieldset': { borderColor: 'rgba(218, 165, 32, 0.5)' },
                   '&:hover fieldset': { borderColor: 'goldenrod' },
@@ -265,6 +271,22 @@ const LoginPage = () => {
                   '&.Mui-focused': { color: 'goldenrod' },
                 },
                 '& .MuiInputBase-input': { color: 'white' },
+                '& .MuiInputAdornment-root': {
+                  color: 'rgba(255, 255, 255, 0.7)'
+                }
+              }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      sx={{ color: 'rgba(218, 165, 32, 0.7)' }}
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                )
               }}
             />
 
@@ -336,7 +358,7 @@ const LoginPage = () => {
               </Alert>
             )}
 
-            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', mb: 0}}>
+            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', mt: 0, mb: -2 }}>
               <Box sx={{ width: { xs: '100%', sm: '80%', md: '70%' }, display: 'flex', justifyContent: 'center' }}>
                 <TurnstileComponent ref={recaptchaRef} />
               </Box>
@@ -349,7 +371,7 @@ const LoginPage = () => {
               disabled={isLoading || isRefreshing}
               sx={{
                 mt: 1,
-                mb: 1,
+                mb: -2,
                 borderRadius: 2,
                 color: '#FFFFFF',
                 border: '1px solid rgba(218, 165, 32, 0.5)',
@@ -381,12 +403,19 @@ const LoginPage = () => {
                 'Login'
               )}
             </Button>
-
+            <Button
+              variant="text"
+              size="large"
+              onClick={() => navigate('/auth/forgot-password')}
+              sx={{ mb: -2, width: '100%', alignSelf: 'center', color: 'goldenrod', fontWeight: 'bold' }}
+            >
+              Forgot Password?
+            </Button>
             <Button
               variant="text"
               size="large"
               onClick={() => navigate('/auth/register')}
-              sx={{ mt: 1, width: '100%', alignSelf: 'center', color: 'goldenrod', fontWeight: 'bold' }}
+              sx={{ width: '100%', alignSelf: 'center', color: 'goldenrod', fontWeight: 'bold' }}
             >
               Don't have an account? Register here
             </Button>

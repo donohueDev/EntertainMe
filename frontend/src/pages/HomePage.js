@@ -34,16 +34,7 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const { isAuthenticated, getUserInfo } = useUser();
-  const [userInfo, setUserInfo] = useState(null);
-
-  // Get user info when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      const info = getUserInfo();
-      setUserInfo(info);
-    }
-  }, [isAuthenticated, getUserInfo]);
+  const { isAuthenticated, userInfo } = useUser();
 
   useEffect(() => {
     const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
@@ -457,7 +448,7 @@ const HomePage = () => {
           textShadow: '0 0 15px rgba(218, 165, 32, 0.3)',
           fontWeight: 'bold'
         }}>
-          🎮 Level 1 Loading... More features unlocking soon! 🎬
+          🎮 Levels Loading... More features unlocking soon! 🎬
         </Typography>
       </Paper>
 
@@ -517,7 +508,7 @@ const HomePage = () => {
             }
           }}
         >
-          Welcome{isAuthenticated ? `, ${userInfo.username}!` : '!'}
+          Welcome{isAuthenticated ? `, ${userInfo?.display_name || userInfo?.username}!` : '!'}
         </Typography>
         
         <Typography 
@@ -532,7 +523,10 @@ const HomePage = () => {
             textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
           }}
         >
-          Your personal entertainment companion. Track your favorite games, anime, movies, and shows, rate your experiences, and discover new titles to enjoy. Join our community of fans today!
+          Track your favorite games and anime, share your thoughts, and connect with fellow fans. 
+          <br />
+          <strong>More features—like movies, TV shows, and deeper community tools—are on the way! </strong> 
+           Stay tuned as we continue to grow and unlock new levels together.
         </Typography>
 
         {!isAuthenticated && (
@@ -566,7 +560,7 @@ const HomePage = () => {
             fontWeight: 'bold',
             letterSpacing: '0.05em',
             textTransform: 'uppercase',
-            textAlign: 'center',
+            textAlign: 'left',
             textShadow: 
               `-1px -1px 0 goldenrod,  
                1px -1px 0 goldenrod,
@@ -591,7 +585,7 @@ const HomePage = () => {
             fontWeight: 'bold',
             letterSpacing: '0.05em',
             textTransform: 'uppercase',
-            textAlign: 'center',
+            textAlign: 'left',
             textShadow: 
               `-1px -1px 0 goldenrod,  
                1px -1px 0 goldenrod,

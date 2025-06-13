@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
-import { CssBaseline, AppBar, Toolbar, IconButton, Container, Box, CircularProgress, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
+import { CssBaseline, AppBar, Toolbar, IconButton, Container, Box, CircularProgress, Menu, MenuItem, ListItemIcon, ListItemText, Avatar } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
@@ -22,6 +22,8 @@ import AnimeDetailPage from './pages/animeDetailPage';
 import ProfilePage from './pages/ProfilePage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import VerificationSuccessPage from './pages/VerificationSuccessPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import ChangeForgottenPasswordPage from './pages/ChangeForgottenPasswordPage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -155,7 +157,20 @@ const Navigation = () => {
             }
           }}
         >
-          <PersonIcon />
+          {isAuthenticated && getUserInfo()?.avatar_url ? (
+            <Avatar 
+              src={getUserInfo().avatar_url} 
+              alt={getUserInfo().display_name || getUserInfo().username}
+              sx={{ 
+                width: 32, 
+                height: 32,
+                border: '2px solid goldenrod',
+                boxShadow: '0 0 10px rgba(218, 165, 32, 0.3)'
+              }}
+            />
+          ) : (
+            <PersonIcon />
+          )}
           Account
         </IconButton>
         <Menu
@@ -250,6 +265,8 @@ const AppRoutes = () => {
       <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
       <Route path="/auth/verify-email-sent" element={<VerifyEmailPage />} />
       <Route path="/auth/verify-email-success" element={<VerificationSuccessPage />} />
+      <Route path="/auth/forgot-password" element={<ResetPasswordPage />} />
+      <Route path="/auth/reset-password" element={<ChangeForgottenPasswordPage />} />
 
       {/* Main app routes: with main layout */}
       <Route

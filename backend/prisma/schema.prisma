@@ -137,7 +137,7 @@ model User {
   email                     String    @unique
   username                  String    @unique
   password                  String
-  display_name              String?
+  display_name              String?   @unique
   avatar_url               String?
   bio                      String?
   location                 String?
@@ -151,6 +151,8 @@ model User {
   email_verified          Boolean   @default(false)
   verification_token      String?
   verification_token_expires DateTime?
+  reset_token             String?
+  reset_token_expires     DateTime?
   created_at              DateTime  @default(now())
   
   // Review counts

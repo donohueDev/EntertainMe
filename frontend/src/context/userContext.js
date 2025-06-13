@@ -32,7 +32,9 @@ export const UserProvider = ({ children }) => {
             setIsAuthenticated(true);
             setUserInfo({
               userId: decoded.userId,
-              username: decoded.username
+              username: decoded.username,
+              display_name: decoded.display_name,
+              avatar_url: decoded.avatar_url
             });
           }
         } else {
@@ -52,14 +54,16 @@ export const UserProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = (token) => {
+  const login = (token, userData) => {
     try {
       const decoded = jwtDecode(token);
       localStorage.setItem('token', token);
       setIsAuthenticated(true);
       setUserInfo({
         userId: decoded.userId,
-        username: decoded.username
+        username: decoded.username,
+        display_name: userData?.display_name || decoded.username,
+        avatar_url: userData?.avatar_url || decoded.avatar_url
       });
     } catch (error) {
       console.error('Error during login:', error);
@@ -83,12 +87,21 @@ export const UserProvider = ({ children }) => {
       return {
         userId: decoded.userId,
         username: decoded.username,
+        display_name: decoded.display_name,
+        avatar_url: decoded.avatar_url,
         token: token  // Include the token in the returned object
       };
     } catch (error) {
       console.error('Error getting user info:', error);
       return null;
     }
+  };
+
+  const updateUserInfo = (newUserInfo) => {
+    setUserInfo(prevInfo => ({
+      ...prevInfo,
+      ...newUserInfo
+    }));
   };
 
   // setup formatting for user context provider to be used in app.js
@@ -99,7 +112,8 @@ export const UserProvider = ({ children }) => {
       userInfo,
       login,
       logout,
-      getUserInfo
+      getUserInfo,
+      updateUserInfo
     }}>
       {children}
     </UserContext.Provider>

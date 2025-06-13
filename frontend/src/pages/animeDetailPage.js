@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../context/userContext';
 import API_BASE_URL from '../config';
 import {
@@ -12,8 +12,10 @@ import {
   CardContent,
   CircularProgress,
   Grid,
+  Tooltip,
 } from '@mui/material';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReviewBox from '../components/ReviewBox';
 import useFetchDetails from '../hooks/useFetchDetails';
 import useUserContentRating from '../hooks/useUserContentRating';
@@ -45,6 +47,7 @@ const setCachedThumbnail = (videoId, url) => {
 
 const AnimeDetailPage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const initialAnime = location.state?.anime;
   const [showTrailer, setShowTrailer] = useState(false);
   const { isAuthenticated } = useUser();
@@ -298,11 +301,87 @@ const AnimeDetailPage = () => {
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Card sx={{ 
+        borderRadius: 2,
+        boxShadow: 'none',
+        background: 'rgba(20, 24, 36, 0.98)',
+        border: 'none',
         '&:hover': {
           transform: 'none',
           boxShadow: 'none'
         }
       }}>
+        {/* Title Section */}
+        <Box
+          sx={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            p: 3,
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+          }}
+        >
+          <Tooltip title="Go back to previous page" arrow placement="bottom">
+            <IconButton
+              onClick={() => navigate(-1)}
+              sx={{
+                color: 'white',
+                '&:hover': {
+                  color: 'goldenrod',
+                  backgroundColor: 'rgba(218, 165, 32, 0.1)'
+                }
+              }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+          </Tooltip>
+          <Typography
+            variant="h3"
+            component="h1"
+            sx={{
+              color: 'white',
+              fontWeight: 'bold',
+              width: '100%',
+              overflow: 'visible',
+              fontSize: {
+                xs: 'clamp(1.2rem, 6vw, 2.5rem)',
+                sm: 'clamp(1.5rem, 5vw, 3rem)',
+                md: 'clamp(2rem, 4vw, 3.5rem)',
+                lg: 'clamp(2.5rem, 3vw, 4rem)'
+              },
+              lineHeight: 1.1,
+              display: 'block',
+              textAlign: 'left',
+            }}
+          >
+            <span
+              style={{
+                display: 'block',
+                width: '100%',
+                fontFamily: 'inherit',
+                fontWeight: 700,
+                verticalAlign: 'middle',
+              }}
+            >
+              {anime.title_english || anime.title}
+            </span>
+            {anime.title_japanese && (
+              <span
+                style={{
+                  display: 'block',
+                  fontWeight: 400,
+                  color: '#bdbdbd',
+                  fontSize: '2rem',
+                  marginTop: 2,
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {(anime.title_japanese || '').replace(/[A-Za-z]/g, '').trim()}
+              </span>
+            )}
+          </Typography>
+        </Box>
+
         {/* Trailer section with play overlay */}
         <Box sx={{ 
           position: 'relative', 
@@ -362,64 +441,6 @@ const AnimeDetailPage = () => {
         </Box>
         {/* Anime details */}
         <CardContent>
-          <Box
-            sx={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-start',
-              overflow: 'visible',
-              position: 'relative',
-            }}
-          >
-            <Typography
-              variant="h3"
-              component="h1"
-              gutterBottom
-              sx={{
-                color: 'white',
-                fontWeight: 'bold',
-                mb: 2,
-                width: '100%',
-                overflow: 'visible',
-                fontSize: {
-                  xs: 'clamp(1.2rem, 6vw, 2.5rem)',
-                  sm: 'clamp(1.5rem, 5vw, 3rem)',
-                  md: 'clamp(2rem, 4vw, 3.5rem)',
-                  lg: 'clamp(2.5rem, 3vw, 4rem)'
-                },
-                lineHeight: 1.1,
-                display: 'block',
-                textAlign: 'left',
-              }}
-            >
-              <span
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  fontFamily: 'inherit',
-                  fontWeight: 700,
-                  verticalAlign: 'middle',
-                }}
-              >
-                {anime.title_english || anime.title}
-              </span>
-              {anime.title_japanese && (
-                <span
-                  style={{
-                    display: 'block',
-                    fontWeight: 400,
-                    color: '#bdbdbd',
-                    fontSize: '2rem',
-                    marginTop: 2,
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  {(anime.title_japanese || '').replace(/[A-Za-z]/g, '').trim()}
-                </span>
-              )}
-          </Typography>
-          </Box>
           <Box sx={{ mb: 2 }}>
             <Typography variant="subtitle1" sx={{ color: '#bdbdbd', mb: 2, fontSize: '1.2rem', fontWeight: 500 }}>
               Anime Details
@@ -458,7 +479,7 @@ const AnimeDetailPage = () => {
                       return 'N/A';
                     })()
                   }
-          </Typography>
+                </Typography>
                 <Typography variant="body1" sx={{ color: 'white', mb: 2 }}>
                   <strong>Duration:</strong> {anime.duration ?? 'N/A'}
                 </Typography>
