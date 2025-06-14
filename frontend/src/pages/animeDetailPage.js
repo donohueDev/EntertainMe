@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useUser } from '../context/userContext';
 import API_BASE_URL from '../config';
 import {
@@ -13,6 +13,7 @@ import {
   CircularProgress,
   Grid,
   Tooltip,
+  Alert,
 } from '@mui/material';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -47,7 +48,6 @@ const setCachedThumbnail = (videoId, url) => {
 
 const AnimeDetailPage = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const initialAnime = location.state?.anime;
   const [showTrailer, setShowTrailer] = useState(false);
   const { isAuthenticated } = useUser();
@@ -77,7 +77,6 @@ const AnimeDetailPage = () => {
     setRating,
     status,
     setStatus,
-    userContentData: userAnimeData,
     loading: ratingLoading,
     error: ratingError,
     setError: setRatingError,
@@ -177,13 +176,11 @@ const AnimeDetailPage = () => {
     }
   }, [showTrailer, youtubeApiReady, initializePlayer]);
 
-  // Set rating and status from userAnimeData
-  useEffect(() => {
-    if (userAnimeData) {
-      setRating(userAnimeData.user_rating || 0);
-      setStatus(userAnimeData.user_status || '');
-    }
-  }, [userAnimeData, setRating, setStatus]);
+  // Handle back navigation
+  const handleBackClick = (e) => {
+    e.stopPropagation();
+    window.history.back();
+  };
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -288,23 +285,48 @@ const AnimeDetailPage = () => {
 
   if (animeLoading) {
     return (
-      <Container>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
-          <CircularProgress />
-        </Box>
-      </Container>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        flex: 1 
+      }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
-  if (!anime) return <div>Loading...</div>;
+  if (!anime) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        minHeight: '100vh',
+        flex: 1 
+      }}>
+        <Alert severity="error">Anime information not found</Alert>
+      </Box>
+    );
+  }
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container maxWidth="md" sx={{ 
+      py: 4,
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100vh'
+    }}>
       <Card sx={{ 
         borderRadius: 2,
         boxShadow: 'none',
         background: 'rgba(20, 24, 36, 0.98)',
         border: 'none',
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
         '&:hover': {
           transform: 'none',
           boxShadow: 'none'
@@ -323,7 +345,7 @@ const AnimeDetailPage = () => {
         >
           <Tooltip title="Go back to previous page" arrow placement="bottom">
             <IconButton
-              onClick={() => navigate(-1)}
+              onClick={handleBackClick}
               sx={{
                 color: 'white',
                 '&:hover': {

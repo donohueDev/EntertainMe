@@ -24,6 +24,7 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import VerificationSuccessPage from './pages/VerificationSuccessPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ChangeForgottenPasswordPage from './pages/ChangeForgottenPasswordPage';
+import OAuthCallback from './pages/OAuthCallback';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -31,12 +32,15 @@ const ProtectedRoute = ({ children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('ProtectedRoute - Auth state:', { isAuthenticated, isInitializing });
     if (!isInitializing && !isAuthenticated) {
+      console.log('ProtectedRoute - Not authenticated, redirecting to login');
       navigate('/auth/login', { replace: true });
     }
   }, [isAuthenticated, isInitializing, navigate]);
 
   if (isInitializing) {
+    console.log('ProtectedRoute - Initializing, showing loading spinner');
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
         <CircularProgress />
@@ -45,6 +49,7 @@ const ProtectedRoute = ({ children }) => {
   }
 
   // Only render children if authenticated
+  // console.log('ProtectedRoute - Rendering children:', isAuthenticated);
   return isAuthenticated ? children : null;
 };
 
@@ -255,38 +260,86 @@ const Navigation = () => {
   );
 };
 
+// Auth layout component
+const AuthLayout = ({ children }) => {
+  return (
+    <Box sx={{ 
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      py: 4
+    }}>
+      {children}
+    </Box>
+  );
+};
+
+// Main layout component
+const MainLayout = ({ children }) => {
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <Navigation />
+      <Box 
+        component="main" 
+        sx={{ 
+          flexGrow: 1, 
+          pt: 8, 
+          pb: 7,
+          minHeight: '100vh', // Ensure minimum full viewport height
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        <Container sx={{ 
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {children}
+        </Container>
+      </Box>
+    </Box>
+  );
+};
+
 // Refactored AppRoutes to separate auth and main app routes
 const AppRoutes = () => {
   return (
     <Routes>
-      {/* Auth routes: no main layout */}
-      <Route path="/auth/login" element={<LoginPage />} />
-      <Route path="/auth/register" element={<Register />} />
-      <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
-      <Route path="/auth/verify-email-sent" element={<VerifyEmailPage />} />
-      <Route path="/auth/verify-email-success" element={<VerificationSuccessPage />} />
-      <Route path="/auth/forgot-password" element={<ResetPasswordPage />} />
-      <Route path="/auth/reset-password" element={<ChangeForgottenPasswordPage />} />
+      {/* Auth routes: with auth layout */}
+      <Route
+        path="/auth/*"
+        element={
+          <AuthLayout>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
+              <Route path="/verify-email-sent" element={<VerifyEmailPage />} />
+              <Route path="/verify-email-success" element={<VerificationSuccessPage />} />
+              <Route path="/forgot-password" element={<ResetPasswordPage />} />
+              <Route path="/reset-password" element={<ChangeForgottenPasswordPage />} />
+              <Route path="/oauth-callback" element={<OAuthCallback />} />
+            </Routes>
+          </AuthLayout>
+        }
+      />
 
       {/* Main app routes: with main layout */}
       <Route
         path="*"
         element={
-          <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-            <Navigation />
-            <Box component="main" sx={{ flexGrow: 1, pt: 8, pb: 7 }}>
-              <Container>
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/game/:id" element={<GameDetailPage />} />
-                  <Route path="/search" element={<SearchPage />} />
-                  <Route path="/user/:username/dashboard" element={<ProtectedRoute><AccountDashboard /></ProtectedRoute>} />
-                  <Route path="/user/:username/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-                  <Route path="/anime/:slug" element={<AnimeDetailPage />} />
-                </Routes>
-              </Container>
-            </Box>
-          </Box>
+          <MainLayout>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/game/:id" element={<GameDetailPage />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/user/:username/dashboard" element={<ProtectedRoute><AccountDashboard /></ProtectedRoute>} />
+              <Route path="/user/:username/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              <Route path="/anime/:slug" element={<AnimeDetailPage />} />
+            </Routes>
+          </MainLayout>
         }
       />
     </Routes>

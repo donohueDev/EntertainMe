@@ -29,12 +29,27 @@ const isDev = NODE_ENV === 'development';
 const HomePage = () => {
   const [games, setGames] = useState([]);
   const [anime, setAnime] = useState([]);
-  // const [movies, setMovies] = useState([]);
-  // const [tvShows, setTvShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const { isAuthenticated, userInfo } = useUser();
+
+  // Navigation handlers
+  const handleGameClick = (gameEntry) => {
+    if (gameEntry && gameEntry.game && gameEntry.game.slug) {
+      navigate(`/game/${gameEntry.game.slug}`, {
+        state: { game: gameEntry.game }
+      });
+    }
+  };
+
+  const handleAnimeClick = (animeEntry) => {
+    if (animeEntry && animeEntry.anime && animeEntry.anime.slug) {
+      navigate(`/anime/${animeEntry.anime.slug}`, {
+        state: { anime: animeEntry.anime }
+      });
+    }
+  };
 
   useEffect(() => {
     const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
@@ -234,11 +249,6 @@ const HomePage = () => {
     );
   }
 
-  // Save scroll position before navigating away from HomePage
-  const saveScrollPosition = () => {
-    sessionStorage.setItem('homeScrollY', window.scrollY.toString());
-  };
-
   const GameCard = React.memo(({ gameEntry, onClick }) => (
     <Card
       sx={{
@@ -361,18 +371,12 @@ const HomePage = () => {
     </Card>
   ));
 
+  // Update the render functions to use the new handlers
   const renderGameCard = (gameEntry) => (
     <GameCard
       key={`${gameEntry.rank}-${gameEntry.game.id}`}
       gameEntry={gameEntry}
-      onClick={() => {
-        saveScrollPosition();
-        if (gameEntry && gameEntry.game && gameEntry.game.slug) {
-          navigate(`/game/${gameEntry.game.slug}`, {
-            state: { game: gameEntry.game }
-          });
-        }
-      }}
+      onClick={() => handleGameClick(gameEntry)}
     />
   );
 
@@ -380,14 +384,7 @@ const HomePage = () => {
     <AnimeCard
       key={`${animeEntry.rank}-${animeEntry.anime.id}`}
       animeEntry={animeEntry}
-      onClick={() => {
-        saveScrollPosition();
-        if (animeEntry && animeEntry.anime && animeEntry.anime.slug) {
-          navigate(`/anime/${animeEntry.anime.slug}`, {
-            state: { anime: animeEntry.anime }
-          });
-        }
-      }}
+      onClick={() => handleAnimeClick(animeEntry)}
     />
   );
 
@@ -448,7 +445,7 @@ const HomePage = () => {
           textShadow: '0 0 15px rgba(218, 165, 32, 0.3)',
           fontWeight: 'bold'
         }}>
-          🎮 Levels Loading... More features unlocking soon! 🎬
+          🎮 More levels loading... upgrades unlocking soon! 🎬
         </Typography>
       </Paper>
 
@@ -516,7 +513,8 @@ const HomePage = () => {
           sx={{ 
             color: 'text.primary',
             maxWidth: '800px',
-            mb: 3,
+            mb: 1,
+            fontSize: '1.0rem',
             textAlign: 'center',
             lineHeight: 1.6,
             letterSpacing: '0.02em',
@@ -535,7 +533,7 @@ const HomePage = () => {
             size="large"
             onClick={() => navigate('/auth/register')}
             sx={{
-              py: 1.5,
+              py: 1,
               px: 4,
               fontSize: '1.1rem',
               ...commonStyles.goldenBorder,
@@ -552,6 +550,7 @@ const HomePage = () => {
         items={games}
         renderCard={renderGameCard}
         title="Top 100 Games"
+        storageKey="games_scroller"
         sx={{ 
           mb: 4,
           '& .MuiTypography-h4': {
@@ -577,6 +576,7 @@ const HomePage = () => {
         items={anime}
         renderCard={renderAnimeCard}
         title="Top 100 Anime"
+        storageKey="anime_scroller"
         sx={{ 
           mb: 4,
           '& .MuiTypography-h4': {

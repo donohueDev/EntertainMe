@@ -56,14 +56,23 @@ export const UserProvider = ({ children }) => {
 
   const login = (token, userData) => {
     try {
+      console.log('Login function called with token:', token ? 'Token present' : 'No token');
       const decoded = jwtDecode(token);
+      console.log('Decoded token:', decoded);
+      
       localStorage.setItem('token', token);
       setIsAuthenticated(true);
       setUserInfo({
         userId: decoded.userId,
         username: decoded.username,
-        display_name: userData?.display_name || decoded.username,
-        avatar_url: userData?.avatar_url || decoded.avatar_url
+        display_name: decoded.display_name || userData?.display_name || decoded.username,
+        avatar_url: decoded.avatar_url || userData?.avatar_url
+      });
+      console.log('Login successful, user info set:', {
+        userId: decoded.userId,
+        username: decoded.username,
+        display_name: decoded.display_name || userData?.display_name || decoded.username,
+        avatar_url: decoded.avatar_url || userData?.avatar_url
       });
     } catch (error) {
       console.error('Error during login:', error);
@@ -74,16 +83,23 @@ export const UserProvider = ({ children }) => {
   };
 
   const logout = () => {
+    console.log('Logout called');
     localStorage.removeItem('token');
     setIsAuthenticated(false);
     setUserInfo(null);
+    console.log('Logout completed');
   };
 
   const getUserInfo = () => {
     try {
+      // console.log('getUserInfo called');
       const token = localStorage.getItem('token');
-      if (!token) return null;
+      if (!token) {
+        console.log('No token found in localStorage');
+        return null;
+      }
       const decoded = jwtDecode(token);
+      // console.log('Decoded user info:', decoded);
       return {
         userId: decoded.userId,
         username: decoded.username,
@@ -104,6 +120,29 @@ export const UserProvider = ({ children }) => {
     }));
   };
 
+  const setToken = (token) => {
+    try {
+      console.log('Setting token in context...');
+      const decoded = jwtDecode(token);
+      console.log('Decoded token:', decoded);
+      
+      localStorage.setItem('token', token);
+      setIsAuthenticated(true);
+      setUserInfo({
+        userId: decoded.userId,
+        username: decoded.username,
+        display_name: decoded.display_name,
+        avatar_url: decoded.avatar_url
+      });
+      console.log('Token set successfully in context');
+    } catch (error) {
+      console.error('Error setting token:', error);
+      localStorage.removeItem('token');
+      setIsAuthenticated(false);
+      setUserInfo(null);
+    }
+  };
+
   // setup formatting for user context provider to be used in app.js
   return (
     <UserContext.Provider value={{ 
@@ -113,7 +152,8 @@ export const UserProvider = ({ children }) => {
       login,
       logout,
       getUserInfo,
-      updateUserInfo
+      updateUserInfo,
+      setToken
     }}>
       {children}
     </UserContext.Provider>

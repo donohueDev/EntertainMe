@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
+import axios from 'axios';
 import { verifyTurnstile } from '../utils/verifyRecaptcha';
 import { sendEmail } from '../utils/sendEmail';
 import { createVerificationEmailTemplate, createPasswordResetEmailTemplate } from '../utils/emailTemplates';
@@ -12,8 +13,6 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 export default prisma;
-
-
 
 // Ensure JWT_SECRET exists
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -36,24 +35,36 @@ interface LoginRequest {
   recaptchaToken: string;
 }
 
-interface JwtPayload {
-  userId: number;
-  username: string;
-  display_name?: string | null;
-}
-
 interface VerifyEmailRequest {
   token: string;
 }
 
-
-interface ResetPasswordRequest {
-  email: string;
-  newPassword: string;
-  recaptchaToken: string;
+interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
 }
 
+interface GoogleUserInfo {
+  email: string;
+  name: string;
+  id: string;
+  picture?: string;
+}
 
+// Extend Express Request type to include user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: number;
+        username: string;
+        display_name?: string | null;
+        avatar_url?: string | null;
+      }
+    }
+  }
+}
 
 export const authController = {
   register: async (req: Request<object, {}, RegisterRequest>, res: Response) => {
@@ -226,12 +237,11 @@ export const authController = {
         return res.status(401).json({ message: 'Invalid username or password' });
       }
 
-            // Verify password
+      // Verify password
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
         return res.status(401).json({ message: 'Invalid username or password' });
       }
-
 
       // Check if email is verified
       if (!user.email_verified) {
@@ -451,6 +461,95 @@ export const authController = {
       console.error('Error verifying password reset:', error);
       return res.status(500).json({ message: 'Server error verifying password reset' });
     }
-  }
+  },
+
+  googleAuth: async (_req: Request, res: Response) => {
+    // Redirect to Google OAuth
+    // if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_REDIRECT_URI_DEV) {
+    //   return res.status(500).json({ message: 'Google OAuth configuration is missing' });
+    // }
+    // Construct the Google OAuth URL depending on the environment
+    if (process.env.NODE_ENV !== 'production') {
+      const redirectUri = `https://accounts.google.com/o/oauth2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${process.env.GOOGLE_REDIRECT_URI_DEV}&response_type=code&scope=email profile`;
+      res.redirect(redirectUri);
+    }
+    if (process.env.NODE_ENV === 'production') {
+      const redirectUri = `https://accounts.google.com/o/oauth2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${process.env.GOOGLE_REDIRECT_URI_PROD}&response_type=code&scope=email profile`;
+      res.redirect(redirectUri);
+    }
+  },
+
+  googleAuthCallback: async (req: Request, res: Response) => {
+    const { code } = req.query;
+
+    try {
+      // Exchange authorization code for access token
+      const tokenResponse = await axios.post(`https://oauth2.googleapis.com/token`, {
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI_DEV,
+        grant_type: 'authorization_code'
+      });
+      const { access_token } = tokenResponse.data as TokenResponse;
+      if (!access_token) {
+        return res.status(400).json({ message: 'Failed to obtain access token from Google' });
+      }
+      // Fetch user info from Google
+      const userInfoResponse = await axios.get(`https://www.googleapis.com/oauth2/v2/userinfo`, {
+        headers: {
+          Authorization: `Bearer ${access_token}`
+        }
+      });
+
+      const user = userInfoResponse.data as GoogleUserInfo;
+
+      // Find or create user in your database
+      let dbUser = await prisma.user.findUnique({
+        where: { email: user.email }
+      });
+
+      if (!dbUser) {
+        // Generate username from email
+        const emailPrefix = user.email.split('@')[0];
+        let username = emailPrefix;
+        
+        let i = 1;
+        while (await prisma.user.findUnique({ where: { username } })) {
+          username = `${emailPrefix}${i++}`;
+        }
+
+        dbUser = await prisma.user.create({
+          data: {
+            email: user.email,
+            username: username,
+            password: '', // Empty password for Google-authenticated users
+            email_verified: true, // Google users are pre-verified
+            authType: 'GOOGLE',
+            avatar_url: user.picture || '', // Use Google profile picture if available
+            created_at: new Date(),
+          }
+        });
+      }
+
+      // Generate JWT token for the user with more information
+      const token = jwt.sign(
+        { 
+          userId: dbUser.id,
+          username: dbUser.username,
+          display_name: dbUser.display_name,
+          avatar_url: dbUser.avatar_url
+        }, 
+        JWT_SECRET, 
+        { expiresIn: '7d' }  // Increased token expiration to 7 days
+      );
+
+      // Redirect to OAuth callback page with token
+      return res.redirect(`${FRONTEND_URL}/auth/oauth-callback?token=${token}`);
+    } catch (error) {
+      console.error('Error during Google auth callback:', error);
+      return res.status(500).json({ message: 'Server error during Google auth callback' });
+    }
+  },
 
 };

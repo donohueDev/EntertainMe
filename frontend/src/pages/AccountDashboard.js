@@ -52,13 +52,11 @@ const AccountDashboard = () => {
   const [ratingSuccessOpen, setRatingSuccessOpen] = useState(false);
   const [ratedItemName, setRatedItemName] = useState('');
   const [newRatingValue, setNewRatingValue] = useState(0);
-
-  // Add state for the new Edit Content Dialog
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [contentItemToEdit, setContentItemToEdit] = useState(null);
-
-  // Content type dropdown state
-  const [contentType, setContentType] = useState('games');
+  const [contentType, setContentType] = useState(() => {
+    return localStorage.getItem('contentType') || 'games';
+  });
 
   // Reset filter when content type changes
   useEffect(() => {
@@ -271,8 +269,13 @@ const AccountDashboard = () => {
     }, 300);
   };
 
+  const handleContentTypeChange = (type) => {
+    setContentType(type);
+    localStorage.setItem('contentType', type);
+  };
+
   // If loading, show loading spinner
-  if (loading || animeLoading) {
+  if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress />
@@ -281,10 +284,10 @@ const AccountDashboard = () => {
   }
 
   // If error, show error message
-  if (error || animeError) {
+  if (error) {
     return (
       <Container>
-        <Alert severity="error">{error || animeError}</Alert>
+        <Alert severity="error">{error}</Alert>
       </Container>
     );
   }
@@ -360,7 +363,7 @@ const AccountDashboard = () => {
                 }}
               >
                 <Button 
-                  onClick={() => setContentType('games')}
+                  onClick={() => handleContentTypeChange('games')}
                   className={contentType === 'games' ? 'active' : ''}
                   sx={{
                     ...theme.components.MuiButton.styleOverrides.root,
@@ -373,7 +376,7 @@ const AccountDashboard = () => {
                   Games
                 </Button>
                 <Button 
-                  onClick={() => setContentType('anime')}
+                  onClick={() => handleContentTypeChange('anime')}
                   className={contentType === 'anime' ? 'active' : ''}
                   sx={{
                     ...theme.components.MuiButton.styleOverrides.root,

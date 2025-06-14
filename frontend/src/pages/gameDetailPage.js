@@ -1,6 +1,6 @@
 // gameDetailPage.js is used to display game details to user
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import API_BASE_URL from '../config';
 import { useUser } from '../context/userContext';
 import {
@@ -37,10 +37,22 @@ const formatDate = (dateString) => {
 // GameDetailPage component for displaying detailed game information
 const GameDetailPage = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const initialGame = location.state?.game;
   const [success, setSuccess] = useState(false);
   const { isAuthenticated } = useUser();
+
+  // Handle back navigation
+  const handleBackClick = (e) => {
+    e.stopPropagation();
+    console.log('Current scroll position before back:', window.scrollY);
+    // Use the actual browser back button behavior instead of navigate(-1)
+    window.history.back();
+  };
+
+  // Log scroll position when component mounts
+  useEffect(() => {
+    console.log('GameDetail mounted, scroll position:', window.scrollY);
+  }, []);
 
   // Fetch game details using custom hook
   const {
@@ -75,11 +87,6 @@ const GameDetailPage = () => {
     updateUserContentState();
   }, [updateUserContentState]);
 
-  // Scroll to top when component mounts
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-
   // Function to get English description
   const getEnglishDescription = (description) => {
     if (!description) return 'No description available.';
@@ -89,29 +96,48 @@ const GameDetailPage = () => {
 
   if (gameLoading) {
     return (
-      <Container>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
-          <CircularProgress />
-        </Box>
-      </Container>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        flex: 1 
+      }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   if (!game) {
     return (
-      <Container>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        minHeight: '100vh',
+        flex: 1 
+      }}>
         <Alert severity="error">Game information not found</Alert>
-      </Container>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container maxWidth="md" sx={{ 
+      py: 4,
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100vh'
+    }}>
       <Card sx={{ 
         borderRadius: 2,
         boxShadow: 'none',
         background: 'rgba(20, 24, 36, 0.98)',
         border: 'none',
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
         '&:hover': {
           transform: 'none',
           boxShadow: 'none'
@@ -130,7 +156,7 @@ const GameDetailPage = () => {
         >
           <Tooltip title="Go back to previous page" arrow placement="bottom">
             <IconButton
-              onClick={() => navigate(-1)}
+              onClick={handleBackClick}
               sx={{
                 color: 'white',
                 '&:hover': {

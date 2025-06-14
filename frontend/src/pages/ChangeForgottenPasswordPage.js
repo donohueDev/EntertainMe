@@ -219,7 +219,7 @@ const ChangeForgottenPasswordPage = () => {
                     Password Reset Successful
                 </DialogTitle>
                 <DialogContent>
-                    <Typography sx={{ textAlign: 'center' }}>
+                    <Typography sx={{ textAlign: 'center', mt: 2 }}>
                         Your password has been successfully reset. You can now log in with your new password.
                     </Typography>
                 </DialogContent>

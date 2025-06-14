@@ -1,11 +1,12 @@
 // RegisterPage component for user registration
 import React, { useState, useRef, useEffect } from 'react';
 import validator from 'validator';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../context/userContext';
 import axiosInstance from '../utils/axiosConfig';
 import TurnstileComponent from '../components/Recaptcha';
 import isValidPassword from '../utils/isValidPassword';
+import GoogleOAuthButton from '../components/GoogleOAuthButton';
 import {
   Container,
   Box,
@@ -25,9 +26,47 @@ const RegisterPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useUser();
   const recaptchaRef = useRef(null);
   const hasRestoredState = useRef(false);
+
+  // Handle Google OAuth token
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    
+    console.log('Checking for Google OAuth token:', token);
+    
+    if (token) {
+      try {
+        console.log('Processing Google OAuth token...');
+        // Use the login function from userContext
+        login(token, {
+          // The token already contains all the user info we need
+          // The login function will decode it
+        });
+        
+        // Get user info from token for navigation
+        const userInfo = JSON.parse(atob(token.split('.')[1]));
+        console.log('Google OAuth user info:', userInfo);
+        
+        // Check if we have all required user info
+        if (!userInfo.userId || !userInfo.username) {
+          console.error('Missing required user info in token:', userInfo);
+          setErrorMessage('Invalid user information received. Please try again.');
+          return;
+        }
+        
+        console.log('Navigating to dashboard...');
+        // Navigate to dashboard
+        navigate(`/user/${userInfo.username}/dashboard`, { replace: true });
+      } catch (error) {
+        console.error('Error processing Google OAuth token:', error);
+        setErrorMessage('Failed to process Google login. Please try again.');
+      }
+    }
+  }, [location, login, navigate]);
 
   // Restore state after page reload (for remount-to-refresh logic)
   useEffect(() => {
@@ -327,11 +366,36 @@ const RegisterPage = () => {
               )}
             </Button>
 
+            <Box sx={{ mt: 0, mb: 2, width: '100%', alignSelf: 'center', justifyContent: 'center', display: 'flex' }}>
+              <GoogleOAuthButton
+                text="Sign up with Google"
+                className="glow-gold"
+                style={{
+                  width: '100%',
+                  alignSelf: 'center',
+                  fontWeight: 'bold',
+                  fontSize: '1.1rem',
+                  borderRadius: 8,
+                  padding: '10px 0',
+                }}
+              >
+                Sign up with Google
+            </GoogleOAuthButton>
+          </Box>
+
             <Button
               variant="text"
               size="large"
               onClick={() => navigate('/auth/login')}
-              sx={{ mt: -2 }}
+              sx={{ 
+                mt: -2,
+                color: 'goldenrod', 
+                fontWeight: 'bold',
+                '&:hover': {
+                  backgroundColor: 'rgba(218, 165, 32, 0.1)',
+                  borderRadius: 1
+                }
+              }}
             >
               Already have an account? Log in.
             </Button>

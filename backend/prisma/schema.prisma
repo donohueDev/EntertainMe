@@ -175,6 +175,9 @@ model User {
   userGames  UserGame[]
   userAnimes UserAnime[]
 
+  // auth type
+  authType   AuthType   @default(LOCAL)
+
   @@index([username, email])
 }
 
@@ -299,4 +302,10 @@ model EsrbRating {
   created_at DateTime @default(now())
 
   @@index([slug])
+}
+
+
+enum AuthType {
+  LOCAL
+  GOOGLE
 }

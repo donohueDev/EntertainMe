@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../context/userContext';
 import axiosInstance from '../utils/axiosConfig';
 import TurnstileComponent from '../components/Recaptcha';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import GoogleOAuthButton from '../components/GoogleOAuthButton';
 import {
   Container,
   Box,
@@ -18,7 +19,6 @@ import {
   InputAdornment
 } from '@mui/material';
 
-
 const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -29,51 +29,46 @@ const LoginPage = () => {
   const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useUser();
   const recaptchaRef = useRef(null);
-  const hasRestoredState = useRef(false);
 
-  // Restore username and error message after page reload
+  // Add this useEffect to handle Google OAuth token
   useEffect(() => {
-    // Prevent double restoration in React Strict Mode
-    if (hasRestoredState.current) return;
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
     
-    const savedUsername = sessionStorage.getItem('loginUsername');
-    const savedError = sessionStorage.getItem('loginError');
-    const savedVerificationNeeded = sessionStorage.getItem('loginNeedsVerification');
-    const savedVerificationEmail = sessionStorage.getItem('loginVerificationEmail');
+    console.log('Checking for Google OAuth token:', token);
     
-    console.log('LoginPage restored state:', {
-      savedUsername,
-      savedError,
-      savedVerificationNeeded,
-      savedVerificationEmail
-    });
-    
-    // Only process if we have values to restore
-    if (savedUsername || savedError || savedVerificationNeeded || savedVerificationEmail) {
-      hasRestoredState.current = true;
-      
-      if (savedUsername) {
-        setUsername(savedUsername);
+    if (token) {
+      try {
+        console.log('Processing Google OAuth token...');
+        // Use the login function from userContext
+        login(token, {
+          // The token already contains all the user info we need
+          // The login function will decode it
+        });
+        
+        // Get user info from token for navigation
+        const userInfo = JSON.parse(atob(token.split('.')[1]));
+        console.log('Google OAuth user info:', userInfo);
+        
+        // Check if we have all required user info
+        if (!userInfo.userId || !userInfo.username) {
+          console.error('Missing required user info in token:', userInfo);
+          setErrorMessage('Invalid user information received. Please try again.');
+          return;
+        }
+        
+        console.log('Navigating to dashboard...');
+        // Navigate to dashboard
+        navigate(`/user/${userInfo.username}/dashboard`, { replace: true });
+      } catch (error) {
+        console.error('Error processing Google OAuth token:', error);
+        setErrorMessage('Failed to process Google login. Please try again.');
       }
-      
-      if (savedError) {
-        setErrorMessage(savedError);
-      }
-      
-      if (savedError === 'Please verify your email before logging in') {
-        console.log('Setting needsEmailVerification to true');
-        setNeedsEmailVerification(true);
-      }
-      
-      // Clean up sessionStorage after successfully restoring state
-      sessionStorage.removeItem('loginUsername');
-      sessionStorage.removeItem('loginError');
-      sessionStorage.removeItem('loginNeedsVerification');
-      sessionStorage.removeItem('loginVerificationEmail');
     }
-  }, []);
+  }, [location, login, navigate]);
 
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
@@ -137,6 +132,7 @@ const LoginPage = () => {
         sessionStorage.setItem('loginError', errorMsg);
         sessionStorage.setItem('loginNeedsVerification', 'true');
         sessionStorage.setItem('loginVerificationEmail', actualEmail);
+        setNeedsEmailVerification(true);
         
         // Show loading state while refreshing
         setIsRefreshing(true);
@@ -358,10 +354,8 @@ const LoginPage = () => {
               </Alert>
             )}
 
-            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', mt: 0, mb: -2 }}>
-              <Box sx={{ width: { xs: '100%', sm: '80%', md: '70%' }, display: 'flex', justifyContent: 'center' }}>
+            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'left', mt: 0, mb: -2 }}>
                 <TurnstileComponent ref={recaptchaRef} />
-              </Box>
             </Box>
 
             <Button
@@ -374,17 +368,19 @@ const LoginPage = () => {
                 mb: -2,
                 borderRadius: 2,
                 color: '#FFFFFF',
-                border: '1px solid rgba(218, 165, 32, 0.5)',
                 backgroundColor: '#051426',
                 width: '100%',
                 alignSelf: 'center',
                 fontWeight: 'bold',
                 fontSize: '1.1rem',
                 letterSpacing: '0.03em',
+                border: '2px solid gold',
+                boxShadow: '0 0 8px 0 rgba(255, 215, 0, 0.3)',
+                transition: 'box-shadow 0.2s, border-color 0.2s',
                 '&:hover': {
                   backgroundColor: '#051426',
-                  border: '1px solid goldenrod',
-                  boxShadow: '0 0 5px rgba(218, 165, 32, 0.5)'
+                  boxShadow: '0 0 16px 4px rgba(255, 215, 0, 0.7)',
+                  borderColor: '#FFD700',
                 },
                 '&:disabled': {
                   backgroundColor: 'rgba(5, 20, 38, 0.7)',
@@ -403,23 +399,57 @@ const LoginPage = () => {
                 'Login'
               )}
             </Button>
-            <Button
-              variant="text"
-              size="large"
-              onClick={() => navigate('/auth/forgot-password')}
-              sx={{ mb: -2, width: '100%', alignSelf: 'center', color: 'goldenrod', fontWeight: 'bold' }}
-            >
-              Forgot Password?
-            </Button>
-            <Button
-              variant="text"
-              size="large"
-              onClick={() => navigate('/auth/register')}
-              sx={{ width: '100%', alignSelf: 'center', color: 'goldenrod', fontWeight: 'bold' }}
-            >
-              Don't have an account? Register here
-            </Button>
           </Box>
+
+          <Box sx={{ mt: 4, mb: 2, width: '100%', alignSelf: 'center', justifyContent: 'center', display: 'flex' }}>
+            <GoogleOAuthButton
+              className="glow-gold"
+              style={{
+                width: '100%',
+                alignSelf: 'center',
+                fontWeight: 'bold',
+                fontSize: '1.1rem',
+                borderRadius: 8,
+                padding: '10px 0',
+              }}
+            />
+          </Box>
+
+          <Button
+            variant="text"
+            size="large"
+            onClick={() => navigate('/auth/forgot-password')}
+            sx={{ 
+              mb: 1, 
+              width: '100%', 
+              alignSelf: 'center', 
+              color: 'goldenrod', 
+              fontWeight: 'bold',
+              '&:hover': {
+                backgroundColor: 'rgba(218, 165, 32, 0.1)',
+                borderRadius: 1
+              }
+            }}
+          >
+            Forgot Password?
+          </Button>
+          <Button
+            variant="text"
+            size="large"
+            onClick={() => navigate('/auth/register')}
+            sx={{ 
+              width: '100%', 
+              alignSelf: 'center', 
+              color: 'goldenrod', 
+              fontWeight: 'bold',
+              '&:hover': {
+                backgroundColor: 'rgba(218, 165, 32, 0.1)',
+                borderRadius: 1
+              }
+            }}
+          >
+            Don't have an account? Register here
+          </Button>
         </Paper>
       </Box>
     </Container>

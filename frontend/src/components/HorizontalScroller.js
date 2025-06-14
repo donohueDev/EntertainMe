@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Box, IconButton, Typography } from '@mui/material';
+import React, { useRef, useEffect } from 'react';
+import { Box, IconButton, Typography, CircularProgress } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 
@@ -13,10 +13,39 @@ const HorizontalScroller = ({
   cardGap = 24,
   rows = 2,
   sx = {},
+  storageKey = '',
 }) => {
   const scrollContainerRef = useRef(null);
 
-  const handleScroll = (direction) => {
+  // Set up scroll restoration
+  useEffect(() => {
+    if (scrollContainerRef.current && storageKey) {
+      // Disable smooth scrolling temporarily for instant restoration
+      scrollContainerRef.current.style.scrollBehavior = 'auto';
+      
+      // Get the saved position from session storage
+      const savedPosition = sessionStorage.getItem(`${storageKey}_scroll`);
+      if (savedPosition) {
+        scrollContainerRef.current.scrollLeft = parseInt(savedPosition, 10);
+      }
+
+      // Re-enable smooth scrolling after restoration
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.style.scrollBehavior = 'smooth';
+        }
+      }, 100);
+    }
+  }, [storageKey, items]);
+
+  // Save scroll position when scrolling
+  const handleScroll = () => {
+    if (scrollContainerRef.current && storageKey) {
+      sessionStorage.setItem(`${storageKey}_scroll`, scrollContainerRef.current.scrollLeft.toString());
+    }
+  };
+
+  const handleArrowScroll = (direction) => {
     if (scrollContainerRef.current) {
       const container = scrollContainerRef.current;
       const containerWidth = container.clientWidth;
@@ -30,8 +59,22 @@ const HorizontalScroller = ({
     }
   };
 
+  if (!items || items.length === 0) {
+    return (
+      <Box sx={{ 
+        width: '100%', 
+        height: height, 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center' 
+      }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
-    <Box sx={{ width: '100%', ...sx }}>
+    <Box sx={{ width: '100%', position: 'relative', ...sx }}>
       {title && (
         <Typography
           variant="h4"
@@ -49,7 +92,7 @@ const HorizontalScroller = ({
       <Box sx={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center', gap: 2 }}>
         {/* Left arrow */}
         <IconButton
-          onClick={() => handleScroll('left')}
+          onClick={() => handleArrowScroll('left')}
           sx={{
             backgroundColor: '#042454',
             '&:hover': { backgroundColor: '#374265' },
@@ -64,6 +107,7 @@ const HorizontalScroller = ({
         {/* Scroll container */}
         <Box
           ref={scrollContainerRef}
+          onScroll={handleScroll}
           sx={{
             display: 'grid',
             gridAutoFlow: 'column dense',
@@ -77,7 +121,6 @@ const HorizontalScroller = ({
             '&::-webkit-scrollbar': { display: 'none' },
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
-            scrollBehavior: 'smooth',
             flexGrow: 1,
             minHeight: height,
             alignItems: 'start',
@@ -89,7 +132,7 @@ const HorizontalScroller = ({
         </Box>
         {/* Right arrow */}
         <IconButton
-          onClick={() => handleScroll('right')}
+          onClick={() => handleArrowScroll('right')}
           sx={{
             backgroundColor: '#042454',
             '&:hover': { backgroundColor: '#374265' },
@@ -107,3 +150,4 @@ const HorizontalScroller = ({
 };
 
 export default HorizontalScroller;
+

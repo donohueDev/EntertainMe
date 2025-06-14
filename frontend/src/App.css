@@ -1,0 +1,12 @@
+.glow-gold {
+  border: 2px solid gold;
+  border-radius: 8px;
+  box-shadow: 0 0 8px 0 rgba(255, 215, 0, 0.3);
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.glow-gold:hover,
+.glow-gold:focus {
+  box-shadow: 0 0 16px 4px gold;
+  border-color: #FFD700;
+}
