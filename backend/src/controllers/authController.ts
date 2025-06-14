@@ -484,11 +484,17 @@ export const authController = {
 
     try {
       // Exchange authorization code for access token
+      let redirectUri;
+      if(process.env.NODE_ENV !== 'production') {
+        redirectUri = process.env.GOOGLE_REDIRECT_URI_DEV;
+      } else {
+        redirectUri = process.env.GOOGLE_REDIRECT_URI_PROD;
+      }
       const tokenResponse = await axios.post(`https://oauth2.googleapis.com/token`, {
         code,
         client_id: process.env.GOOGLE_CLIENT_ID,
         client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI_DEV,
+        redirect_uri: redirectUri,
         grant_type: 'authorization_code'
       });
       const { access_token } = tokenResponse.data as TokenResponse;
