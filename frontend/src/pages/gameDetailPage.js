@@ -49,10 +49,10 @@ const GameDetailPage = () => {
     window.history.back();
   };
 
-  // Log scroll position when component mounts
   useEffect(() => {
-    console.log('GameDetail mounted, scroll position:', window.scrollY);
+    window.scrollTo(0, 0);
   }, []);
+
 
   // Fetch game details using custom hook
   const {

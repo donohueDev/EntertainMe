@@ -99,3 +99,5 @@ yarn-error.log
 *.jsbundle
 
 /generated/prisma
+
+.cursor/

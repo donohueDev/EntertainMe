@@ -1,5 +1,5 @@
 // Import necessary libraries and modules
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import API_BASE_URL from '../config';
@@ -14,6 +14,7 @@ import {
   Alert,
   Button,
   Paper,
+  Tooltip,
 } from '@mui/material';
 
 import { Title } from '../components/Title';
@@ -249,127 +250,206 @@ const HomePage = () => {
     );
   }
 
-  const GameCard = React.memo(({ gameEntry, onClick }) => (
-    <Card
-      sx={{
-        width: 150,
-        height: 240,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        cursor: 'pointer',
-        boxSizing: 'border-box',
-        ...commonStyles.cardHover,
-        bgcolor: 'background.paper',
-        ...commonStyles.goldenBorder,
-      }}
-      onClick={onClick}
-    >
-      <CardMedia
-        component="img"
-        height="180"
-        image={gameEntry.game.background_image || '/placeholder-image.jpg'}
-        alt={gameEntry.game.name}
-        sx={{
-          width: '100%',
-          objectFit: 'cover',
-          objectPosition: 'center',
-          borderTopLeftRadius: 4,
-          borderTopRightRadius: 4,
-          bgcolor: 'background.paper',
-        }}
-      />
-      <CardContent
-        sx={{
-          height: 50,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          textAlign: 'center',
-        }}
-      >
-        <Typography
-          variant="h8"
-          component="div"
-          sx={{
-            fontWeight: 'bold',
-            fontFamily: 'sans-serif',
-            color: 'text.primary',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-          }}
-        >
-          {gameEntry.game.name}
-        </Typography>
-      </CardContent>
-    </Card>
-  ));
+  const GameCard = React.memo(({ gameEntry, onClick }) => {
+    const titleRef = useRef(null);
+    const [isOverflowed, setIsOverflowed] = useState(false);
 
-  const AnimeCard = React.memo(({ animeEntry, onClick }) => (
-    <Card
-      sx={{
-        width: 150,
-        height: 240,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        cursor: 'pointer',
-        boxSizing: 'border-box',
-        ...commonStyles.cardHover,
-        bgcolor: 'background.paper',
-        ...commonStyles.goldenBorder,
-      }}
-      onClick={onClick}
-    >
-      <CardMedia
-        component="img"
-        height="180"
-        image={
-          animeEntry.anime.images?.jpg?.large_image_url ||
-          animeEntry.anime.images?.webp?.large_image_url ||
-          '/placeholder-image.jpg'
-        }
-        alt={animeEntry.anime.title_english || animeEntry.anime.title}
+    useEffect(() => {
+      const el = titleRef.current;
+      if (el) {
+        setIsOverflowed(el.scrollHeight > el.clientHeight);
+      }
+    }, [gameEntry.game.name]);
+
+    const title = gameEntry.game.name;
+
+    return (
+      <Card
         sx={{
-          width: '100%',
-          objectFit: 'cover',
-          objectPosition: 'center',
-          borderTopLeftRadius: 4,
-          borderTopRightRadius: 4,
-          bgcolor: 'background.paper',
-        }}
-      />
-      <CardContent
-        sx={{
-          height: 50,
+          width: 150,
+          height: 240,
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          textAlign: 'center',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          boxSizing: 'border-box',
+          ...commonStyles.cardHover,
+          bgcolor: 'background.paper',
+          ...commonStyles.goldenBorder,
         }}
+        onClick={onClick}
       >
-        <Typography
-          variant="h8"
-          component="div"
+        <CardMedia
+          component="img"
+          height="180"
+          image={gameEntry.game.background_image || '/placeholder-image.jpg'}
+          alt={title}
           sx={{
-            fontWeight: 'bold',
-            fontFamily: 'sans-serif',
-            color: 'text.primary',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
+            width: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+            borderTopLeftRadius: 4,
+            borderTopRightRadius: 4,
+            bgcolor: 'background.paper',
+          }}
+        />
+        <CardContent
+          sx={{
+            height: 50,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
           }}
         >
-          {animeEntry.anime.title_english || animeEntry.anime.title}
-        </Typography>
-      </CardContent>
-    </Card>
-  ));
+          {isOverflowed ? (
+            <Tooltip title={title} placement="top" arrow>
+              <Typography
+                ref={titleRef}
+                variant="h8"
+                component="div"
+                sx={{
+                  fontWeight: 'bold',
+                  fontFamily: 'sans-serif',
+                  color: 'text.primary',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  cursor: 'pointer',
+                }}
+              >
+                {title}
+              </Typography>
+            </Tooltip>
+          ) : (
+            <Typography
+              ref={titleRef}
+              variant="h8"
+              component="div"
+              sx={{
+                fontWeight: 'bold',
+                fontFamily: 'sans-serif',
+                color: 'text.primary',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                cursor: 'pointer',
+              }}
+            >
+              {title}
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+    );
+  });
+
+  const AnimeCard = React.memo(({ animeEntry, onClick }) => {
+    const titleRef = useRef(null);
+    const [isOverflowed, setIsOverflowed] = useState(false);
+
+    useEffect(() => {
+      const el = titleRef.current;
+      if (el) {
+        // For multi-line ellipsis, check scrollHeight vs clientHeight
+        setIsOverflowed(el.scrollHeight > el.clientHeight);
+      }
+    }, [animeEntry.anime.title_english, animeEntry.anime.title]);
+
+    const title = animeEntry.anime.title_english || animeEntry.anime.title;
+
+    return (
+      <Card
+        sx={{
+          width: 150,
+          height: 240,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          boxSizing: 'border-box',
+          ...commonStyles.cardHover,
+          bgcolor: 'background.paper',
+          ...commonStyles.goldenBorder,
+        }}
+        onClick={onClick}
+      >
+        <CardMedia
+          component="img"
+          height="180"
+          image={
+            animeEntry.anime.images?.jpg?.large_image_url ||
+            animeEntry.anime.images?.webp?.large_image_url ||
+            '/placeholder-image.jpg'
+          }
+          alt={title}
+          sx={{
+            width: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+            borderTopLeftRadius: 4,
+            borderTopRightRadius: 4,
+            bgcolor: 'background.paper',
+          }}
+        />
+        <CardContent
+          sx={{
+            height: 50,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+          }}
+        >
+          {isOverflowed ? (
+            <Tooltip title={title} placement="top" arrow>
+              <Typography
+                ref={titleRef}
+                variant="h8"
+                component="div"
+                sx={{
+                  fontWeight: 'bold',
+                  fontFamily: 'sans-serif',
+                  color: 'text.primary',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  cursor: 'pointer',
+                }}
+              >
+                {title}
+              </Typography>
+            </Tooltip>
+          ) : (
+            <Typography
+              ref={titleRef}
+              variant="h8"
+              component="div"
+              sx={{
+                fontWeight: 'bold',
+                fontFamily: 'sans-serif',
+                color: 'text.primary',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                cursor: 'pointer',
+              }}
+            >
+              {title}
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+    );
+  });
 
   // Update the render functions to use the new handlers
   const renderGameCard = (gameEntry) => (

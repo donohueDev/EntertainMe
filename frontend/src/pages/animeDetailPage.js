@@ -89,6 +89,11 @@ const AnimeDetailPage = () => {
     contentId: anime?.id
   });
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+
   // Update state when user data changes
   useEffect(() => {
     updateUserContentState();
